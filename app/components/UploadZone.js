@@ -1,0 +1,179 @@
+'use client';
+import { useState, useRef, useCallback } from 'react';
+
+function formatBytes(bytes) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function formatDuration(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+export default function UploadZone({ onUploadComplete }) {
+  const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const [error, setError] = useState('');
+  const inputRef = useRef(null);
+
+  const processFile = useCallback(async (file) => {
+    if (!file) return;
+
+    const allowedTypes = ['video/mp4', 'video/webm', 'video/avi', 'video/mov',
+      'video/quicktime', 'video/x-matroska', 'video/mkv', 'video/x-msvideo',
+      'video/mpeg', 'video/ogg'];
+
+    const isVideoFile = allowedTypes.includes(file.type) ||
+      /\.(mp4|webm|avi|mov|mkv|mpeg|mpg|ogv|m4v|3gp|flv|wmv)$/i.test(file.name);
+
+    if (!isVideoFile) {
+      setError('Please upload a video file (MP4, AVI, MOV, MKV, WebM, etc.)');
+      return;
+    }
+
+    setError('');
+    setUploading(true);
+    setUploadProgress(0);
+    setUploadStatus('Preparing upload…');
+
+    const formData = new FormData();
+    formData.append('video', file);
+
+    try {
+      // Simulate progress since fetch doesn't expose upload progress easily
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 88) { clearInterval(progressInterval); return prev; }
+          return prev + (Math.random() * 6);
+        });
+      }, 200);
+
+      setUploadStatus('Uploading video…');
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      clearInterval(progressInterval);
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+        throw new Error(err.error || 'Upload failed');
+      }
+
+      setUploadProgress(100);
+      setUploadStatus('Processing metadata…');
+
+      const data = await res.json();
+
+      // Get video duration via browser
+      const videoUrl = URL.createObjectURL(file);
+      const duration = await new Promise((resolve) => {
+        const vid = document.createElement('video');
+        vid.preload = 'metadata';
+        vid.onloadedmetadata = () => { resolve(vid.duration); URL.revokeObjectURL(videoUrl); };
+        vid.onerror = () => { resolve(data.duration || 0); };
+        vid.src = videoUrl;
+      });
+
+      onUploadComplete({
+        jobId: data.jobId,
+        filename: file.name,
+        size: file.size,
+        duration: duration || data.duration || 0,
+        sizeFormatted: formatBytes(file.size),
+        durationFormatted: formatDuration(duration || data.duration || 0),
+      });
+    } catch (err) {
+      setError(err.message || 'Upload failed. Please try again.');
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  }, [onUploadComplete]);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    processFile(file);
+  }, [processFile]);
+
+  const handleChange = useCallback((e) => {
+    processFile(e.target.files[0]);
+  }, [processFile]);
+
+  return (
+    <div>
+      {error && (
+        <div className="error-banner" role="alert">
+          <span>⚠️</span>
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div
+        id="upload-zone"
+        className={`upload-zone${dragOver ? ' drag-over' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => !uploading && inputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        aria-label="Upload video file"
+        onKeyDown={(e) => e.key === 'Enter' && !uploading && inputRef.current?.click()}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept="video/*"
+          onChange={handleChange}
+          className="visually-hidden"
+          id="video-file-input"
+          disabled={uploading}
+        />
+
+        {!uploading ? (
+          <>
+            <span className="upload-icon">🎬</span>
+            <p className="upload-title">Drop your video here</p>
+            <p className="upload-sub">or click to browse your files</p>
+            <button
+              type="button"
+              className="upload-btn"
+              onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+            >
+              <span>📂</span>
+              <span>Choose Video File</span>
+            </button>
+            <p className="upload-formats">
+              Supports: MP4, AVI, MOV, MKV, WebM, MPEG &amp; more
+            </p>
+          </>
+        ) : (
+          <>
+            <span className="upload-icon" style={{ animation: 'spin 1s linear infinite' }}>⚙️</span>
+            <p className="upload-title">{uploadStatus}</p>
+            <div className="upload-progress-wrap">
+              <div className="upload-progress-bar">
+                <div
+                  className="upload-progress-fill"
+                  style={{ width: `${Math.min(uploadProgress, 100)}%` }}
+                />
+              </div>
+              <p className="upload-progress-text">{Math.round(Math.min(uploadProgress, 100))}%</p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
