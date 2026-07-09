@@ -166,3 +166,5 @@ Akku ClipGen/
 *May your clips render instantly and your styling stay cybernetic!*
 
 </div>
+#   A k k u - C l i p G e n  
+ 
