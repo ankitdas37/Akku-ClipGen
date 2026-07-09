@@ -7,7 +7,9 @@
 
 **A high-performance local video/audio cropper and segmenter styled with a premium Cyber-Neon Anime aesthetic.**
 
-🌐 **[Live Demo / Deployment Link Here](https://your-live-link-here.com)**
+🌐 **[Live Demo / Deployment Link](https://akku-clip-gen.vercel.app)** &nbsp; • &nbsp; 💻 **[GitHub Repository](https://github.com/ankitdas37/Akku-ClipGen)**
+
+<br/>
 
 [![Next.js](https://img.shields.io/badge/Next.js-14.2-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
@@ -18,7 +20,7 @@
 
 <br />
 
-Designed for rapid content generation, it utilizes zero-loss stream copying via `ffmpeg` to clip videos in a fraction of a second, wrapped in a beautiful, interactive visual dashboard.
+> Designed for rapid content generation, it utilizes zero-loss stream copying via `ffmpeg` to clip videos in a fraction of a second, wrapped in a beautiful, interactive visual dashboard.
 
 <div align="center">
   <img src="./public/logo.png" alt="Akku ClipGen Logo" width="220" height="220" style="border-radius: 50%; border: 4px solid #22d3ee; box-shadow: 0 0 25px rgba(34,211,238,0.6); margin: 25px 0;" />
@@ -26,7 +28,7 @@ Designed for rapid content generation, it utilizes zero-loss stream copying via 
 
 ---
 
-## 🎐 What is Akku ClipGen & Features
+## 🎐 What is Akku ClipGen?
 
 **Akku ClipGen** is a modern, anime-themed local web application built for creators to instantly cut, crop, and generate segments from large video files without any quality loss. It handles gigabytes of video locally on your machine with blazing speed.
 
@@ -41,7 +43,9 @@ Designed for rapid content generation, it utilizes zero-loss stream copying via 
 
 ---
 
-## 🛠️ Technology Stack Used
+<details>
+<summary><b>🛠️ Click to Expand: Technology Stack Used</b></summary>
+<br/>
 
 | Technology | Purpose | Description |
 | :--- | :--- | :--- |
@@ -52,9 +56,13 @@ Designed for rapid content generation, it utilizes zero-loss stream copying via 
 | 🎨 **Vanilla CSS** | Styling | Custom Properties (Variables) to create the dynamic glassmorphic and glowing cyber-neon themes. |
 | 💾 **Local Persistence**| Database | Node.js `fs` module to store persistent data locally in `tmp/data/`. |
 
+</details>
+
 ---
 
-## 🔐 Security Mechanisms
+<details>
+<summary><b>🔐 Click to Expand: Security Mechanisms</b></summary>
+<br/>
 
 Akku ClipGen implements modern security practices to protect the Admin Dashboard:
 
@@ -63,6 +71,8 @@ Akku ClipGen implements modern security practices to protect the Admin Dashboard
 * 🍪 **HttpOnly Session Cookies:** Stores the session token in an `HttpOnly` cookie, rendering it completely inaccessible to client-side JavaScript and blocking XSS attacks.
 * ⏳ **Anti-Brute Force Delay:** Implements a synthetic `800ms` delay on failed login attempts to dramatically slow down automated password guessing attacks.
 * 🔒 **Secondary Admin Hashing:** Passwords for additional admins are irreversibly hashed using **SHA-256** before being saved to the local database.
+
+</details>
 
 ---
 
@@ -115,7 +125,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 📂 Project Architecture
+<details>
+<summary><b>📂 Click to Expand: Project Architecture</b></summary>
+<br/>
 
 ```text
 Akku ClipGen/
@@ -140,6 +152,8 @@ Akku ClipGen/
 └── package.json              # Project dependencies
 ```
 
+</details>
+
 ---
 
 ## 💫 Developed By
@@ -155,10 +169,12 @@ Akku ClipGen/
 
 ### 🤝 Connect With Me
 
-[![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:ankitdas082006@gmail.com)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/akku-clip-gen-8106b12ba/)
-[![Instagram](https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/the.ankit.das)
-[![Twitter/X](https://img.shields.io/badge/Twitter/X-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/AnkitDa01860054)
+<p align="center">
+<a href="mailto:ankitdas082006@gmail.com"><img src="https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white" alt="Email" /></a>
+<a href="https://www.linkedin.com/in/akku-clip-gen-8106b12ba/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
+<a href="https://www.instagram.com/the.ankit.das"><img src="https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Instagram" /></a>
+<a href="https://x.com/AnkitDa01860054"><img src="https://img.shields.io/badge/Twitter/X-000000?style=for-the-badge&logo=x&logoColor=white" alt="Twitter/X" /></a>
+</p>
 
 <br/>
 
@@ -166,5 +182,3 @@ Akku ClipGen/
 *May your clips render instantly and your styling stay cybernetic!*
 
 </div>
-#   A k k u - C l i p G e n 
- 
