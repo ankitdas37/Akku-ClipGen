@@ -7,7 +7,8 @@
 
 **A high-performance local video/audio cropper and segmenter styled with a premium Cyber-Neon Anime aesthetic.**
 
-🌐 **[Live Demo / Deployment Link Here](https://your-live-link-here.com)**
+🌐 **[Live Demo / Deployment Link](https://akku-clip-gen.vercel.app)**
+💻 **[GitHub Repository](https://github.com/ankitdas37/Akku-ClipGen)**
 
 [![Next.js](https://img.shields.io/badge/Next.js-14.2-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
