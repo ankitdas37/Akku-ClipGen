@@ -1,8 +1,38 @@
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
+import { mkdir, readdir, stat, rm } from 'fs/promises';
+import { existsSync, createWriteStream } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
+
+const TEN_MINUTES = 10 * 60 * 1000;
+
+// Delete old upload and clip folders to save space
+async function cleanupOldJobs() {
+  try {
+    const now = Date.now();
+    const dirsToClean = [
+      path.join(process.cwd(), 'tmp', 'uploads'),
+      path.join(process.cwd(), 'tmp', 'clips')
+    ];
+
+    for (const dir of dirsToClean) {
+      if (!existsSync(dir)) continue;
+      const entries = await readdir(dir);
+      for (const entry of entries) {
+        const entryPath = path.join(dir, entry);
+        const fileStat = await stat(entryPath);
+        // If folder is older than 10 minutes, delete it
+        if (now - fileStat.mtimeMs > TEN_MINUTES) {
+          await rm(entryPath, { recursive: true, force: true, maxRetries: 15, retryDelay: 500 }).catch(() => {});
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Auto Cleanup Error]', err);
+  }
+}
 
 // Parse multipart form data manually (works in App Router)
 async function parseFormData(request) {
@@ -18,6 +48,9 @@ export async function POST(request) {
   try {
     const file = await parseFormData(request);
 
+    // Run garbage collection in the background for stale data
+    cleanupOldJobs();
+
     const jobId = uuidv4();
     const uploadDir = path.join(process.cwd(), 'tmp', 'uploads', jobId);
 
@@ -31,14 +64,17 @@ export async function POST(request) {
     const savedName = `original${ext}`;
     const filePath = path.join(uploadDir, savedName);
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filePath, buffer);
+    // Stream the file directly to disk to support unlimited sizes without memory crashes
+    await pipeline(
+      Readable.fromWeb(file.stream()),
+      createWriteStream(filePath)
+    );
 
     return NextResponse.json({
       jobId,
       filename: file.name,
       savedName,
-      size: buffer.length,
+      size: file.size,
       duration: 0, // Will be determined client-side from the video element
     });
   } catch (err) {

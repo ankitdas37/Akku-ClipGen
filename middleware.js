@@ -3,21 +3,27 @@ import { NextResponse } from 'next/server';
 const SESSION_COOKIE = 'akku_admin_session';
 
 // Web Crypto API — works in Edge runtime (middleware)
-async function makeToken() {
-  const user   = process.env.ADMIN_USERNAME || 'admin';
-  const pass   = process.env.ADMIN_PASSWORD || 'Akku@2024';
-  const secret = process.env.ADMIN_SECRET   || 'fallback-secret';
+async function verifyToken(token) {
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+  
+  const [b64User, signature] = parts;
+  const secret = process.env.ADMIN_SECRET || 'fallback-secret';
 
-  const enc    = new TextEncoder();
-  const key    = await crypto.subtle.importKey(
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
     'raw', enc.encode(secret),
     { name: 'HMAC', hash: 'SHA-256' },
     false, ['sign']
   );
-  const sig    = await crypto.subtle.sign('HMAC', key, enc.encode(`${user}:${pass}`));
-  return Array.from(new Uint8Array(sig))
+  
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(b64User));
+  const expectedSig = Array.from(new Uint8Array(sig))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
+    
+  return signature === expectedSig;
 }
 
 export async function middleware(request) {
@@ -29,9 +35,8 @@ export async function middleware(request) {
   }
 
   const sessionCookie = request.cookies.get(SESSION_COOKIE);
-  const validToken    = await makeToken();
 
-  if (sessionCookie?.value === validToken) {
+  if (sessionCookie?.value && await verifyToken(sessionCookie.value)) {
     return NextResponse.next();   // ✅ Authenticated
   }
 

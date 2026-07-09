@@ -16,10 +16,10 @@ export async function GET(request) {
     const clipsDir  = path.join(process.cwd(), 'tmp', 'clips',   jobId);
 
     if (existsSync(uploadDir)) {
-      await rm(uploadDir, { recursive: true, force: true });
+      await rm(uploadDir, { recursive: true, force: true, maxRetries: 15, retryDelay: 500 });
     }
     if (existsSync(clipsDir)) {
-      await rm(clipsDir,  { recursive: true, force: true });
+      await rm(clipsDir,  { recursive: true, force: true, maxRetries: 15, retryDelay: 500 });
     }
 
     return NextResponse.json({ success: true });
@@ -28,3 +28,8 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Cleanup failed' }, { status: 500 });
   }
 }
+
+export async function POST(request) {
+  return GET(request);
+}
+

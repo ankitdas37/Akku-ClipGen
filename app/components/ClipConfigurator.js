@@ -21,6 +21,8 @@ function fmtTimecode(secs) {
 export default function ClipConfigurator({ videoInfo, onGenerate, onRemove, isGenerating }) {
   const [clipDuration, setClipDuration] = useState(59);
   const [inputVal,     setInputVal]     = useState('59');
+  const [mode,         setMode]         = useState('auto');
+  const [customSegments, setCustomSegments] = useState([{ id: 1, start: '0', end: '10' }]);
   const [playerOpen,   setPlayerOpen]   = useState(true);
   const [currentTime,  setCurrentTime]  = useState(0);
   const [videoDur,     setVideoDur]     = useState(0);
@@ -65,10 +67,22 @@ export default function ClipConfigurator({ videoInfo, onGenerate, onRemove, isGe
   }, [totalDuration]);
 
   const handleGenerate = useCallback(() => {
-    if (clipDuration > 0 && totalClips > 0 && !isGenerating) {
-      onGenerate(clipDuration);
+    if (mode === 'auto') {
+      if (clipDuration > 0 && totalClips > 0 && !isGenerating) {
+        onGenerate({ mode, clipDuration });
+      }
+    } else {
+      const validSegments = customSegments.filter(s => {
+        const start = parseInt(s.start);
+        const end = parseInt(s.end);
+        return !isNaN(start) && !isNaN(end) && start < end && start >= 0 && end <= (totalDuration || 999999);
+      }).map(s => ({ start: parseInt(s.start), end: parseInt(s.end) }));
+      
+      if (validSegments.length > 0 && !isGenerating) {
+        onGenerate({ mode, customSegments: validSegments });
+      }
     }
-  }, [clipDuration, totalClips, isGenerating, onGenerate]);
+  }, [mode, clipDuration, customSegments, totalClips, isGenerating, totalDuration, onGenerate]);
 
   // Width% for timeline bars
   const barWidth = useCallback((dur) => {
@@ -165,78 +179,122 @@ export default function ClipConfigurator({ videoInfo, onGenerate, onRemove, isGe
 
         {/* Body */}
         <div className="config-body">
-
-          {/* Preset chips */}
-          <div className="preset-label">Each clip length (seconds)</div>
-          <div className="preset-chips">
-            {PRESETS.map(p => (
-              <button
-                key={p}
-                type="button"
-                className={`preset-chip${clipDuration === p ? ' active' : ''}`}
-                onClick={() => selectPreset(p)}
-                disabled={isGenerating}
-                id={`preset-${p}`}
-              >
-                {p}s
-              </button>
-            ))}
+          <div className="config-mode-toggle">
+            <button type="button" className={`mode-btn ${mode === 'auto' ? 'active' : ''}`} onClick={() => setMode('auto')}>Auto Split</button>
+            <button type="button" className={`mode-btn ${mode === 'custom' ? 'active' : ''}`} onClick={() => setMode('custom')}>Custom Clips</button>
           </div>
 
-          {/* Custom input */}
-          <div className="custom-input-wrap">
-            <input
-              id="clip-duration-input"
-              type="text"
-              inputMode="numeric"
-              className="custom-duration-input"
-              value={inputVal}
-              onChange={handleCustomInput}
-              disabled={isGenerating}
-              maxLength={6}
-              aria-label="Custom clip duration in seconds"
-            />
-            <span className="custom-duration-unit">s</span>
-          </div>
-
-          {/* Summary card */}
-          {totalDuration > 0 && clipDuration > 0 && (
-            <div className="clip-summary-card">
-              <div className="summary-row">
-                <span className="summary-label">Full clips</span>
-                <span className="summary-value">
-                  {fullClips > 0 ? `${fullClips} × ${fmtSec(clipDuration)}` : '—'}
-                </span>
+          {mode === 'auto' ? (
+            <>
+              {/* Preset chips */}
+              <div className="preset-label">Each clip length (seconds)</div>
+              <div className="preset-chips">
+                {PRESETS.map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    className={`preset-chip${clipDuration === p ? ' active' : ''}`}
+                    onClick={() => selectPreset(p)}
+                    disabled={isGenerating}
+                    id={`preset-${p}`}
+                  >
+                    {p}s
+                  </button>
+                ))}
               </div>
-              {remainder && (
-                <div className="summary-row">
-                  <span className="summary-label">Partial remaining</span>
-                  <span className="summary-value highlight">{remainder.dur.toFixed(1)}s</span>
+
+              {/* Custom input */}
+              <div className="custom-input-wrap">
+                <input
+                  id="clip-duration-input"
+                  type="text"
+                  inputMode="numeric"
+                  className="custom-duration-input"
+                  value={inputVal}
+                  onChange={handleCustomInput}
+                  disabled={isGenerating}
+                  maxLength={6}
+                  aria-label="Custom clip duration in seconds"
+                />
+                <span className="custom-duration-unit">s</span>
+              </div>
+
+              {/* Summary card */}
+              {totalDuration > 0 && clipDuration > 0 && (
+                <div className="clip-summary-card">
+                  <div className="summary-row">
+                    <span className="summary-label">Full clips</span>
+                    <span className="summary-value">
+                      {fullClips > 0 ? `${fullClips} × ${fmtSec(clipDuration)}` : '—'}
+                    </span>
+                  </div>
+                  {remainder && (
+                    <div className="summary-row">
+                      <span className="summary-label">Partial remaining</span>
+                      <span className="summary-value highlight">{remainder.dur.toFixed(1)}s</span>
+                    </div>
+                  )}
+                  <div className="summary-divider" />
+                  <div className="summary-total-row">
+                    <span className="summary-total-label">Total clips</span>
+                    <span className="summary-total-value">{totalClips}</span>
+                  </div>
                 </div>
               )}
-              <div className="summary-divider" />
-              <div className="summary-total-row">
-                <span className="summary-total-label">Total clips</span>
-                <span className="summary-total-value">{totalClips}</span>
-              </div>
-            </div>
-          )}
 
-          {/* Timeline bars */}
-          {segments.length > 0 && (
-            <div className="timeline-list" role="list" aria-label="Clip timeline">
-              {segments.map(seg => (
-                <div key={seg.index} className="timeline-item" role="listitem">
-                  <span className="timeline-index">#{seg.index}</span>
-                  <div className="timeline-bar-track">
-                    <div
-                      className={`timeline-bar-fill${seg.isRemainder ? ' remainder' : ''}`}
-                      style={{ width: `${barWidth(seg.dur)}%` }}
-                    />
+              {/* Timeline bars */}
+              {segments.length > 0 && (
+                <div className="timeline-list" role="list" aria-label="Clip timeline">
+                  {segments.map(seg => (
+                    <div key={seg.index} className="timeline-item" role="listitem">
+                      <span className="timeline-index">#{seg.index}</span>
+                      <div className="timeline-bar-track">
+                        <div
+                          className={`timeline-bar-fill${seg.isRemainder ? ' remainder' : ''}`}
+                          style={{ width: `${barWidth(seg.dur)}%` }}
+                        />
+                      </div>
+                      <span className="timeline-dur">{fmtSec(seg.dur)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="custom-segments-list">
+              {customSegments.map((seg, i) => (
+                <div key={seg.id} className="custom-segment-row">
+                  <div className="custom-segment-inputs">
+                    <div className="custom-segment-field">
+                      <label>Start Time (sec)</label>
+                      <input type="number" min="0" value={seg.start} onChange={e => {
+                        const newSegs = [...customSegments];
+                        newSegs[i].start = e.target.value;
+                        setCustomSegments(newSegs);
+                      }} disabled={isGenerating} />
+                    </div>
+                    <div className="custom-segment-field">
+                      <label>End Time (sec)</label>
+                      <input type="number" min="1" value={seg.end} onChange={e => {
+                        const newSegs = [...customSegments];
+                        newSegs[i].end = e.target.value;
+                        setCustomSegments(newSegs);
+                      }} disabled={isGenerating} />
+                    </div>
                   </div>
-                  <span className="timeline-dur">{fmtSec(seg.dur)}</span>
+                  <button type="button" className="remove-segment-btn" onClick={() => {
+                    setCustomSegments(customSegments.filter(s => s.id !== seg.id));
+                  }} disabled={isGenerating}>
+                    ✕
+                  </button>
                 </div>
               ))}
+              <button type="button" className="add-segment-btn" onClick={() => {
+                const maxId = Math.max(...customSegments.map(s => s.id), 0);
+                setCustomSegments([...customSegments, { id: maxId + 1, start: '0', end: '10' }]);
+              }} disabled={isGenerating}>
+                + Add Another Clip
+              </button>
             </div>
           )}
 
@@ -246,12 +304,12 @@ export default function ClipConfigurator({ videoInfo, onGenerate, onRemove, isGe
             type="button"
             className="generate-btn"
             onClick={handleGenerate}
-            disabled={!clipDuration || totalClips === 0 || isGenerating}
+            disabled={isGenerating || (mode === 'auto' && (!clipDuration || totalClips === 0)) || (mode === 'custom' && customSegments.length === 0)}
           >
             <span className="btn-label">
               {isGenerating
                 ? 'Generating…'
-                : `Generate ${totalClips > 0 ? totalClips : ''} Clip${totalClips !== 1 ? 's' : ''}`}
+                : (mode === 'auto' ? `Generate ${totalClips > 0 ? totalClips : ''} Clip${totalClips !== 1 ? 's' : ''}` : 'Generate Custom Clips')}
             </span>
           </button>
 

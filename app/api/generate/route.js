@@ -56,24 +56,51 @@ export async function POST(request) {
 
     // Calculate clip segments
     const duration = totalDuration > 0 ? totalDuration : await getVideoDuration(inputPath);
-    const segments = [];
-    let startTime = 0;
-    let clipIndex = 1;
+    let segments = [];
+    
+    if (body.mode === 'custom' && Array.isArray(body.customSegments)) {
+      // Process Custom Segments
+      let clipIndex = 1;
+      for (const seg of body.customSegments) {
+        if (seg.start >= 0 && seg.end > seg.start && seg.start < duration) {
+          const segDuration = seg.end - seg.start;
+          const filename = `clip_custom_${String(clipIndex).padStart(3, '0')}.mp4`;
+          segments.push({
+            index: clipIndex,
+            startTime: seg.start,
+            duration: segDuration,
+            endTime: seg.end,
+            filename,
+            isRemainder: false, // Custom clips aren't "remainders"
+          });
+          clipIndex++;
+        }
+      }
+    } else {
+      // Process Auto Segments
+      const clipDuration = body.clipDuration;
+      let startTime = 0;
+      let clipIndex = 1;
 
-    while (startTime < duration - 0.5) {
-      const remaining = duration - startTime;
-      const segDuration = Math.min(clipDuration, remaining);
-      const filename = `clip_${String(clipIndex).padStart(3, '0')}.mp4`;
-      segments.push({
-        index: clipIndex,
-        startTime,
-        duration: segDuration,
-        endTime: startTime + segDuration,
-        filename,
-        isRemainder: remaining < clipDuration,
-      });
-      startTime += segDuration;
-      clipIndex++;
+      while (startTime < duration - 0.5) {
+        const remaining = duration - startTime;
+        const segDuration = Math.min(clipDuration, remaining);
+        const filename = `clip_${String(clipIndex).padStart(3, '0')}.mp4`;
+        segments.push({
+          index: clipIndex,
+          startTime,
+          duration: segDuration,
+          endTime: startTime + segDuration,
+          filename,
+          isRemainder: remaining < clipDuration,
+        });
+        startTime += segDuration;
+        clipIndex++;
+      }
+    }
+
+    if (segments.length === 0) {
+      return NextResponse.json({ error: 'No valid segments to generate.' }, { status: 400 });
     }
 
     // Process all clips sequentially to avoid memory issues

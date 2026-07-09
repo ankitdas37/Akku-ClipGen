@@ -150,8 +150,115 @@ function MessageCard({ msg, onReply, onMarkRead }) {
   );
 }
 
+// ── Admins Manager ────────────────────────────────────────────────────────
+function AdminsManager() {
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({ username: '', password: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState('');
+
+  const fetchAdmins = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/users');
+      const data = await res.json();
+      setAdmins(data.admins || []);
+    } catch {
+      setError('Failed to load admins.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchAdmins(); }, [fetchAdmins]);
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create admin');
+      setSuccess(`Admin '${data.username}' created successfully!`);
+      setForm({ username: '', password: '' });
+      fetchAdmins();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div className="admin-msg-card" style={{ padding: '2rem', marginBottom: '2rem' }}>
+        <h2 style={{ color: '#ff69b4', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span>➕</span> Create New Admin
+        </h2>
+        {error && <div className="error-banner" style={{ marginBottom: '1rem' }}>{error}</div>}
+        {success && <div style={{ background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(74, 222, 128, 0.2)', marginBottom: '1rem' }}>{success}</div>}
+        <form onSubmit={handleCreate} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            required
+            placeholder="Username"
+            value={form.username}
+            onChange={e => setForm({ ...form, username: e.target.value })}
+            style={{ flex: '1 1 200px', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,192,203,0.3)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none' }}
+          />
+          <input
+            type="password"
+            required
+            placeholder="Password"
+            value={form.password}
+            onChange={e => setForm({ ...form, password: e.target.value })}
+            style={{ flex: '1 1 200px', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,192,203,0.3)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none' }}
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="action-btn"
+            style={{ flex: '0 0 auto', padding: '0.75rem 1.5rem', margin: 0, minWidth: '120px' }}
+          >
+            {submitting ? 'Creating...' : 'Create'}
+          </button>
+        </form>
+      </div>
+
+      <div className="admin-msg-card" style={{ padding: '2rem' }}>
+        <h2 style={{ color: '#a78bfa', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span>👥</span> Existing Admins (Secondary)
+        </h2>
+        {loading ? (
+          <div className="admin-loading">Loading admins…</div>
+        ) : admins.length === 0 ? (
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontStyle: 'italic' }}>No secondary admins found.</div>
+        ) : (
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {admins.map(a => (
+              <div key={a.username} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
+                <span style={{ fontWeight: 'bold' }}>{a.username}</span>
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>Created: {fmtDate(a.createdAt)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Admin Page ────────────────────────────────────────────────────────────
 export default function AdminPage() {
+  const [activeTab, setActiveTab] = useState('messages'); // messages | admins
+
   const [messages,  setMessages]  = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [filter,    setFilter]    = useState('all');  // all | unread | replied
@@ -200,7 +307,7 @@ export default function AdminPage() {
         {/* Header */}
         <header className="site-header">
           <a href="/" className="logo" aria-label="Akku ClipGen Home">
-            <div className="logo-icon">✂️</div>
+            <img src="/logo.png" alt="Akku ClipGen Logo" className="logo-icon" style={{ objectFit: 'cover' }} />
             <span className="logo-text">Akku ClipGen</span>
           </a>
           <nav className="header-nav">
@@ -228,11 +335,42 @@ export default function AdminPage() {
             <div className="hero-eyebrow">
               <span>🛡️</span> Admin Panel
             </div>
-            <h1>Messages <span className="gradient-word">Inbox</span></h1>
-            <p className="hero-sub">View and reply to all contact form submissions.</p>
+            <h1>
+              {activeTab === 'messages' ? 'Messages ' : 'Admin '}
+              <span className="gradient-word">
+                {activeTab === 'messages' ? 'Inbox' : 'Management'}
+              </span>
+            </h1>
+            <p className="hero-sub">
+              {activeTab === 'messages' 
+                ? 'View and reply to all contact form submissions.'
+                : 'Create and manage secondary admin users.'}
+            </p>
           </section>
 
-          {/* Stats row */}
+          {/* Top Navigation Tabs */}
+          <div className="admin-filter-tabs" style={{ marginBottom: '2rem', justifyContent: 'center' }}>
+            <button
+              type="button"
+              className={`admin-filter-tab${activeTab === 'messages' ? ' active' : ''}`}
+              onClick={() => setActiveTab('messages')}
+            >
+              ✉️ Inbox
+            </button>
+            <button
+              type="button"
+              className={`admin-filter-tab${activeTab === 'admins' ? ' active' : ''}`}
+              onClick={() => setActiveTab('admins')}
+            >
+              👥 Admins
+            </button>
+          </div>
+
+          {activeTab === 'admins' ? (
+            <AdminsManager />
+          ) : (
+            <>
+              {/* Stats row */}
           <div className="admin-stats-row">
             <div className="admin-stat-card">
               <span className="admin-stat-num">{messages.length}</span>
@@ -300,7 +438,8 @@ export default function AdminPage() {
               ))}
             </div>
           )}
-
+          </>
+          )}
         </main>
       </div>
     </>

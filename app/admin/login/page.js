@@ -14,6 +14,7 @@ function LoginForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPw,   setShowPw]   = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
   const [status,   setStatus]   = useState('idle');  // idle | loading | error
   const [errMsg,   setErrMsg]   = useState('');
   const [attempts, setAttempts] = useState(0);
@@ -111,6 +112,22 @@ function LoginForm() {
               {showPw ? '🙈' : '👁️'}
             </button>
           </div>
+
+          <div style={{ textAlign: 'right', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setShowForgot(!showForgot)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--brand)', fontSize: '0.85rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+            >
+              Forgot password?
+            </button>
+          </div>
+          
+          {showForgot && (
+            <div className="login-warning" style={{ marginTop: '0.75rem', fontSize: '0.85rem', textAlign: 'left' }}>
+              💡 <strong>Hint:</strong> Your admin credentials are saved locally. Open the <code>.env.local</code> file in your project folder to check or reset your password!
+            </div>
+          )}
         </div>
 
         {/* Error */}
@@ -151,7 +168,7 @@ export default function AdminLoginPage() {
         {/* Logo */}
         <div className="login-logo">
           <a href="/" className="logo" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div className="logo-icon">✂️</div>
+            <img src="/logo.png" alt="Akku ClipGen Logo" className="logo-icon" style={{ objectFit: 'cover' }} />
             <span className="logo-text">Akku ClipGen</span>
           </a>
         </div>

@@ -10,20 +10,20 @@ const CONTACT_DETAILS = [
     icon: '📧',
     label: 'Email',
     value: 'ankitdas@gmail.com',
-    href: 'mailto:ankitdas@gmail.com',
+    href: 'mailto:ankitdas082006@gmail.com',
     color: 'violet',
   },
   {
     icon: '💬',
-    label: 'WhatsApp',
-    value: '+91 9339840967',
-    href: 'https://wa.me/919339840967',
-    color: 'green',
+    label: 'LinkedIn',
+    value: 'Ankit Das',
+    href: 'https://www.linkedin.com/in/ankit-das-434594340/',
+    color: 'blue',
   },
   {
     icon: '🐙',
     label: 'GitHub',
-    value: 'github.com/ankitdas37',
+    value: 'ankitdas37',
     href: 'https://github.com/ankitdas37',
     color: 'cyan',
   },
@@ -80,9 +80,9 @@ export default function ContactPage() {
     setStatus('sending');
     try {
       const res = await fetch('/api/messages', {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(form),
+        body: JSON.stringify(form),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send');
@@ -102,7 +102,7 @@ export default function ContactPage() {
         {/* ── Header ── */}
         <header className="site-header">
           <a href="/" className="logo" aria-label="Akku ClipGen Home">
-            <div className="logo-icon">✂️</div>
+            <img src="/logo.png" alt="Akku ClipGen Logo" className="logo-icon" style={{ objectFit: 'cover' }} />
             <span className="logo-text">Akku ClipGen</span>
           </a>
           <nav className="header-nav">

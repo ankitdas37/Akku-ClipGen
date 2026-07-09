@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import UploadZone from './components/UploadZone';
 import ClipConfigurator from './components/ClipConfigurator';
@@ -15,6 +15,25 @@ export default function Home() {
   const [genProgress, setGenProgress]   = useState(0);
   const [genStatus, setGenStatus]       = useState('');
   const [error, setError]               = useState('');
+
+  // Automatic cleanup when the user leaves the page, refreshes, or closes the browser tab
+  useEffect(() => {
+    const currentJobId = videoInfo?.jobId;
+    if (!currentJobId) return;
+
+    const handleBeforeUnload = () => {
+      // Use sendBeacon for reliable delivery during unload
+      navigator.sendBeacon(`/api/cleanup?jobId=${currentJobId}`);
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Also cleanup when the component unmounts (e.g., navigating to another page)
+      navigator.sendBeacon(`/api/cleanup?jobId=${currentJobId}`);
+    };
+  }, [videoInfo?.jobId]);
 
   const handleUploadComplete = useCallback((info) => {
     setVideoInfo(info);
@@ -33,7 +52,7 @@ export default function Home() {
     setGenProgress(0);
   }, [videoInfo]);
 
-  const handleGenerate = useCallback(async (clipDuration) => {
+  const handleGenerate = useCallback(async (payload) => {
     if (!videoInfo?.jobId || isGenerating) return;
     setIsGenerating(true);
     setGenProgress(5);
@@ -41,7 +60,8 @@ export default function Home() {
     setClips([]);
     setError('');
 
-    const totalClips = Math.ceil(videoInfo.duration / clipDuration);
+    const isCustom = payload.mode === 'custom';
+    const totalClips = isCustom ? payload.customSegments.length : Math.ceil(videoInfo.duration / payload.clipDuration);
     let currentProgress = 5;
     const interval = setInterval(() => {
       currentProgress = Math.min(currentProgress + (85 / (totalClips * 3 + 5)), 88);
@@ -56,8 +76,8 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jobId: videoInfo.jobId,
-          clipDuration,
           totalDuration: videoInfo.duration,
+          ...payload
         }),
       });
 
@@ -100,7 +120,7 @@ export default function Home() {
         {/* Header */}
         <header className="site-header">
           <a href="/" className="logo" aria-label="Akku ClipGen Home">
-            <div className="logo-icon">✂️</div>
+            <img src="/logo.png" alt="Akku ClipGen Logo" className="logo-icon" style={{ objectFit: 'cover' }} />
             <span className="logo-text">Akku ClipGen</span>
           </a>
           <nav className="header-nav">

@@ -115,6 +115,18 @@ function ClipCard({ clip, jobId, index }) {
     setLoading(true);
     try {
       const url = `/api/download?jobId=${encodeURIComponent(jobId)}&clip=${encodeURIComponent(clip.filename)}&format=${format}`;
+      
+      // Check if clip still exists
+      const checkRes = await fetch(url, { method: 'HEAD' });
+      if (!checkRes.ok) {
+        if (checkRes.status === 404) {
+          alert("Your session has expired and the clips have been cleaned up. Redirecting to home...");
+          window.location.href = '/';
+          return;
+        }
+        throw new Error('Download failed');
+      }
+
       const a = document.createElement('a');
       a.href = url;
       a.download = clip.filename.replace('.mp4', `.${format}`);
@@ -122,6 +134,8 @@ function ClipCard({ clip, jobId, index }) {
       a.click();
       document.body.removeChild(a);
       await new Promise(r => setTimeout(r, 1500));
+    } catch (err) {
+      console.error('Download error:', err);
     } finally {
       setLoading(false);
     }
@@ -202,6 +216,18 @@ export default function ClipGrid({ clips, jobId }) {
     try {
       for (const clip of clips) {
         const url = `/api/download?jobId=${encodeURIComponent(jobId)}&clip=${encodeURIComponent(clip.filename)}&format=${format}`;
+        
+        // Check if clip still exists
+        const checkRes = await fetch(url, { method: 'HEAD' });
+        if (!checkRes.ok) {
+          if (checkRes.status === 404) {
+            alert("Your session has expired and the clips have been cleaned up. Redirecting to home...");
+            window.location.href = '/';
+            return;
+          }
+          continue; // skip broken clips
+        }
+
         const a = document.createElement('a');
         a.href = url;
         a.download = clip.filename.replace('.mp4', `.${format}`);
@@ -210,6 +236,8 @@ export default function ClipGrid({ clips, jobId }) {
         document.body.removeChild(a);
         await new Promise(r => setTimeout(r, 800));
       }
+    } catch (err) {
+      console.error('Bulk download error:', err);
     } finally {
       setLoading(false);
     }

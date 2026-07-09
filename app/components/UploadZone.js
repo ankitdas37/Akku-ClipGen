@@ -27,15 +27,11 @@ export default function UploadZone({ onUploadComplete }) {
   const processFile = useCallback(async (file) => {
     if (!file) return;
 
-    const allowedTypes = ['video/mp4', 'video/webm', 'video/avi', 'video/mov',
-      'video/quicktime', 'video/x-matroska', 'video/mkv', 'video/x-msvideo',
-      'video/mpeg', 'video/ogg'];
-
-    const isVideoFile = allowedTypes.includes(file.type) ||
-      /\.(mp4|webm|avi|mov|mkv|mpeg|mpg|ogv|m4v|3gp|flv|wmv)$/i.test(file.name);
+    const isVideoFile = file.type.startsWith('video/') || 
+      /\.(mp4|webm|avi|mov|mkv|mpeg|mpg|ogv|m4v|3gp|flv|wmv|ts|m2ts)$/i.test(file.name);
 
     if (!isVideoFile) {
-      setError('Please upload a video file (MP4, AVI, MOV, MKV, WebM, etc.)');
+      setError('Please upload a valid video file.');
       return;
     }
 
