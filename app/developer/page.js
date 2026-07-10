@@ -58,7 +58,7 @@ export default function DeveloperPage() {
             <div style={{ textAlign: 'center' }}>
               <h2 style={{ fontSize: '2.5rem', color: '#ffb6c1', margin: '0 0 0.5rem 0' }}>Ankit Das</h2>
               <p style={{ color: 'var(--brand)', fontSize: '1.2rem', fontWeight: 'bold', margin: '0 0 1rem 0' }}>
-                Full Stack Developer 🚀
+                CST Student 🚀
               </p>
               <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', lineHeight: '1.6', maxWidth: '500px', margin: '0 auto' }}>
                 Currently pursuing a Diploma in <strong>Computer Science & Technology</strong> at <strong>Technique Polytechnic Institute</strong>. Passionate about building magical, beautiful, and high-performance web applications! 🌸

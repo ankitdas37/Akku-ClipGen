@@ -2895,3 +2895,40 @@ h1, h2, h3, h4 { font-family: var(--font-heading); }
   .custom-segment-inputs { width: 100%; flex-direction: column; }
   .remove-segment-btn { width: 100%; margin-top: 0; }
 }
+
+/* ── Custom Range Slider ── */
+.custom-range-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+  padding: 0 !important;
+  border: none !important;
+}
+
+.custom-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: var(--violet-glow);
+  cursor: pointer;
+  margin-top: -6px;
+  box-shadow: 0 0 10px var(--violet);
+  transition: transform var(--transition-fast);
+}
+
+.custom-range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.custom-range-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+
+.custom-range-slider:focus {
+  outline: none;
+}

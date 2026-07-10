@@ -64,6 +64,14 @@ const FAQ = [
     q: 'Can I download all clips at once?',
     a: 'Yes! Use the "Download All MP4" or "Download All MP3" buttons at the top of the clip grid to download every clip sequentially.',
   },
+  {
+    q: 'Can the Admin see my uploaded video or clips?',
+    a: 'NO. Because we moved the processing entirely into your browser using WebAssembly, the video is completely private to you. It is never uploaded to the internet, so it is impossible for the Admin (or anyone else in the world) to see what video you uploaded or what clips you generated. The Admin panel will only show things like Contact Form messages. ☁️',
+  },
+  {
+    q: 'Are the video and clips saved on the Vercel website?',
+    a: 'NO. Absolutely nothing is saved on Vercel. When a user visits our website, Vercel just sends them the code for the website. Once the website loads on their computer, the video processing happens 100% inside their own computer\'s RAM. Because it never goes to Vercel, it never saves on Vercel.',
+  },
 ];
 
 export default function ContactPage() {

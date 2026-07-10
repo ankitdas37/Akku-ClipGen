@@ -27,6 +27,23 @@ export default function Home() {
     setError('');
   }, []);
 
+  // Global media playback manager: Ensure only one video/audio plays at a time
+  useEffect(() => {
+    const handlePlay = (e) => {
+      if (e.target && (e.target.tagName === 'VIDEO' || e.target.tagName === 'AUDIO')) {
+        const mediaElements = document.querySelectorAll('video, audio');
+        mediaElements.forEach(m => {
+          if (m !== e.target && !m.paused) {
+            m.pause();
+          }
+        });
+      }
+    };
+    // Use capture phase since 'play' event does not bubble
+    document.addEventListener('play', handlePlay, true);
+    return () => document.removeEventListener('play', handlePlay, true);
+  }, []);
+
   const handleRemove = useCallback(() => {
     // Automatically delete (revoke) clips from browser RAM to free memory
     clips.forEach(clip => URL.revokeObjectURL(clip.url));
@@ -37,6 +54,17 @@ export default function Home() {
     setIsGenerating(false);
     setGenProgress(0);
   }, [clips]);
+
+  const handleCancel = useCallback(() => {
+    if (ffmpegRef.current) {
+      ffmpegRef.current.terminate();
+      ffmpegRef.current = null; // Clear so a new one is created next time
+    }
+    setIsGenerating(false);
+    setGenProgress(0);
+    setGenStatus('');
+    setError('Generation was cancelled.');
+  }, []);
 
   const handleGenerate = useCallback(async (payload) => {
     if (!videoInfo?.file || isGenerating) return;
@@ -124,24 +152,42 @@ export default function Home() {
         throw new Error('No valid segments to generate.');
       }
 
+      const isMp3 = payload.format === 'mp3';
+
       for (let i = 0; i < segments.length; i++) {
         const seg = segments[i];
+        if (isMp3) {
+          seg.filename = seg.filename.replace('.mp4', '.mp3');
+        }
+        
         setGenStatus(`Processing clip ${i + 1} of ${segments.length}…`);
         
-        await ffmpeg.exec([
-          '-ss', String(seg.startTime),
-          '-i', inputName,
-          '-t', String(seg.duration),
-          '-c:v', 'copy',
-          '-c:a', 'copy',
-          seg.filename
-        ]);
+        const execArgs = isMp3 
+          ? [
+              '-ss', String(seg.startTime),
+              '-i', inputName,
+              '-t', String(seg.duration),
+              '-q:a', '0',
+              '-map', 'a',
+              seg.filename
+            ]
+          : [
+              '-ss', String(seg.startTime),
+              '-i', inputName,
+              '-t', String(seg.duration),
+              '-c:v', 'copy',
+              '-c:a', 'copy',
+              seg.filename
+            ];
+
+        await ffmpeg.exec(execArgs);
 
         const data = await ffmpeg.readFile(seg.filename);
-        const blob = new Blob([data.buffer], { type: 'video/mp4' });
+        const mimeType = isMp3 ? 'audio/mp3' : 'video/mp4';
+        const blob = new Blob([data.buffer], { type: mimeType });
         const url = URL.createObjectURL(blob);
 
-        generatedClips.push({ ...seg, url });
+        generatedClips.push({ ...seg, url, format: payload.format || 'mp4' });
         
         // Cleanup clip from memory after extracting blob
         await ffmpeg.deleteFile(seg.filename);
@@ -163,9 +209,13 @@ export default function Home() {
       }, 600);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to generate clips. Please try again.');
-      setIsGenerating(false);
-      setGenProgress(0);
+      if (!ffmpegRef.current) {
+        // Intentionally cancelled via handleCancel, do not overwrite the error state
+      } else {
+        setError(err.message || 'Failed to generate clips. Please try again.');
+        setIsGenerating(false);
+        setGenProgress(0);
+      }
     }
   }, [videoInfo, isGenerating]);
 
@@ -227,6 +277,15 @@ export default function Home() {
                     <div className="progress-fill" style={{ width: `${genProgress}%` }} />
                   </div>
                   <p className="progress-label">{Math.round(genProgress)}%</p>
+                  
+                  <button 
+                    type="button" 
+                    className="mode-btn" 
+                    style={{ marginTop: '20px', background: 'rgba(255,50,50,0.1)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff9999' }} 
+                    onClick={handleCancel}
+                  >
+                    🛑 Cancel Generation
+                  </button>
                 </div>
               )}
 

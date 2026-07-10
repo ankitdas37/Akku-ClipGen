@@ -19,19 +19,33 @@ function formatTimestamp(secs) {
 
 // ── Inline Player ────────────────────────────────────────────────────────
 function ClipInlinePlayer({ clip }) {
+  const isMp3 = clip.format === 'mp3';
   return (
     <div className="clip-inline-player">
-      {/* MP4 Video Player */}
-      <video
-        id={`clip-video-${clip.index}`}
-        className="clip-video-player"
-        src={clip.url}
-        controls
-        controlsList="nodownload"
-        preload="metadata"
-      >
-        Your browser does not support the video tag.
-      </video>
+      {isMp3 ? (
+        <audio
+          id={`clip-audio-${clip.index}`}
+          className="clip-audio-player"
+          src={clip.url}
+          controls
+          controlsList="nodownload"
+          preload="metadata"
+          style={{ width: '100%', outline: 'none', borderRadius: '8px', marginTop: '10px' }}
+        >
+          Your browser does not support the audio tag.
+        </audio>
+      ) : (
+        <video
+          id={`clip-video-${clip.index}`}
+          className="clip-video-player"
+          src={clip.url}
+          controls
+          controlsList="nodownload"
+          preload="metadata"
+        >
+          Your browser does not support the video tag.
+        </video>
+      )}
     </div>
   );
 }
@@ -74,13 +88,13 @@ function ClipCard({ clip, index }) {
       {/* Download buttons */}
       <div className="clip-actions">
         <button
-          id={`dl-mp4-${clip.index}`}
+          id={`dl-${clip.format}-${clip.index}`}
           type="button"
           className="clip-dl-btn mp4"
           onClick={handleDownload}
-          title={`Download Clip ${clip.index} as MP4`}
+          title={`Download Clip ${clip.index} as ${clip.format === 'mp3' ? 'MP3' : 'MP4'}`}
         >
-          ⬇️ MP4
+          ⬇️ {clip.format === 'mp3' ? 'MP3' : 'MP4'}
         </button>
       </div>
 
@@ -129,12 +143,12 @@ export default function ClipGrid({ clips }) {
         </div>
         <div className="bulk-actions">
           <button
-            id="bulk-download-mp4"
+            id="bulk-download-media"
             type="button"
             className="bulk-btn mp4"
             onClick={handleBulkDownload}
           >
-            ⬇️ Download All MP4
+            ⬇️ Download All
           </button>
         </div>
       </div>
