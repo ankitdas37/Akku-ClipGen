@@ -18,7 +18,14 @@ export default function Home() {
   const [genStatus, setGenStatus]       = useState('');
   const [error, setError]               = useState('');
   
-  const ffmpegRef = useRef(new FFmpeg());
+  const ffmpegRef = useRef(null);
+
+  useEffect(() => {
+    // Only initialize FFmpeg on the client side to prevent Node.js SSR build errors
+    if (typeof window !== 'undefined' && !ffmpegRef.current) {
+      ffmpegRef.current = new FFmpeg();
+    }
+  }, []);
 
   const handleUploadComplete = useCallback((info) => {
     setVideoInfo(info);
