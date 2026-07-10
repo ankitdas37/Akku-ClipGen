@@ -59,6 +59,15 @@ export default function HowItWorksPage() {
             <p className="cute-feature-desc">Voila! Your clips are ready. You can download them individually as MP4 or MP3, or even grab them all at once! 💖</p>
           </div>
           
+          <div className="cute-feature-card" style={{ gridColumn: '1 / -1', background: 'rgba(255, 105, 180, 0.05)', marginTop: '2rem' }}>
+            <div className="cute-feature-icon" style={{ display: 'inline-block', marginBottom: '0.5rem' }}>✨</div>
+            <h3 className="cute-feature-title">Behind the Scenes (Ultimate Privacy & Zero Storage)</h3>
+            <p className="cute-feature-desc">
+              <strong>Can the Admin see your uploaded video?</strong> NO. Because we moved the processing entirely into your browser using WebAssembly, the video is completely private to you. It is never uploaded to the internet, so it is impossible for the Admin to see what video you uploaded.<br /><br />
+              <strong>Are the videos saved on Vercel?</strong> NO. Absolutely nothing is saved on Vercel. Once the website loads, the video processing happens 100% inside your own computer's RAM. Because it never goes to Vercel, it never saves on Vercel. This means you get complete privacy and we don't have to pay for server storage!
+            </p>
+          </div>
+          
         </section>
       </main>
 

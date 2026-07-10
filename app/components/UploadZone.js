@@ -18,9 +18,6 @@ function formatDuration(secs) {
 
 export default function UploadZone({ onUploadComplete }) {
   const [dragOver, setDragOver] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStatus, setUploadStatus] = useState('');
   const [error, setError] = useState('');
   const inputRef = useRef(null);
 
@@ -36,62 +33,31 @@ export default function UploadZone({ onUploadComplete }) {
     }
 
     setError('');
-    setUploading(true);
-    setUploadProgress(0);
-    setUploadStatus('Preparing upload…');
-
-    const formData = new FormData();
-    formData.append('video', file);
-
+    
     try {
-      // Simulate progress since fetch doesn't expose upload progress easily
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 88) { clearInterval(progressInterval); return prev; }
-          return prev + (Math.random() * 6);
-        });
-      }, 200);
-
-      setUploadStatus('Uploading video…');
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      clearInterval(progressInterval);
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Upload failed' }));
-        throw new Error(err.error || 'Upload failed');
-      }
-
-      setUploadProgress(100);
-      setUploadStatus('Processing metadata…');
-
-      const data = await res.json();
-
-      // Get video duration via browser
+      // Get video duration locally in browser
       const videoUrl = URL.createObjectURL(file);
       const duration = await new Promise((resolve) => {
         const vid = document.createElement('video');
         vid.preload = 'metadata';
         vid.onloadedmetadata = () => { resolve(vid.duration); URL.revokeObjectURL(videoUrl); };
-        vid.onerror = () => { resolve(data.duration || 0); };
+        vid.onerror = () => { resolve(0); URL.revokeObjectURL(videoUrl); };
         vid.src = videoUrl;
       });
 
+      // Pass the actual file directly, so the browser can process it
       onUploadComplete({
-        jobId: data.jobId,
+        file: file, // the actual File object
         filename: file.name,
         size: file.size,
-        duration: duration || data.duration || 0,
+        duration: duration,
         sizeFormatted: formatBytes(file.size),
-        durationFormatted: formatDuration(duration || data.duration || 0),
+        durationFormatted: formatDuration(duration),
+        // use a client-side random id for jobs
+        jobId: Math.random().toString(36).substring(2, 15)
       });
     } catch (err) {
-      setError(err.message || 'Upload failed. Please try again.');
-      setUploading(false);
-      setUploadProgress(0);
+      setError('Failed to read video file.');
     }
   }, [onUploadComplete]);
 
@@ -121,11 +87,11 @@ export default function UploadZone({ onUploadComplete }) {
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        onClick={() => !uploading && inputRef.current?.click()}
+        onClick={() => inputRef.current?.click()}
         role="button"
         tabIndex={0}
         aria-label="Upload video file"
-        onKeyDown={(e) => e.key === 'Enter' && !uploading && inputRef.current?.click()}
+        onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
       >
         <input
           ref={inputRef}
@@ -134,41 +100,22 @@ export default function UploadZone({ onUploadComplete }) {
           onChange={handleChange}
           className="visually-hidden"
           id="video-file-input"
-          disabled={uploading}
         />
 
-        {!uploading ? (
-          <>
-            <span className="upload-icon">🎬</span>
-            <p className="upload-title">Drop your video here</p>
-            <p className="upload-sub">or click to browse your files</p>
-            <button
-              type="button"
-              className="upload-btn"
-              onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
-            >
-              <span>📂</span>
-              <span>Choose Video File</span>
-            </button>
-            <p className="upload-formats">
-              Supports: MP4, AVI, MOV, MKV, WebM, MPEG &amp; more
-            </p>
-          </>
-        ) : (
-          <>
-            <span className="upload-icon" style={{ animation: 'spin 1s linear infinite' }}>⚙️</span>
-            <p className="upload-title">{uploadStatus}</p>
-            <div className="upload-progress-wrap">
-              <div className="upload-progress-bar">
-                <div
-                  className="upload-progress-fill"
-                  style={{ width: `${Math.min(uploadProgress, 100)}%` }}
-                />
-              </div>
-              <p className="upload-progress-text">{Math.round(Math.min(uploadProgress, 100))}%</p>
-            </div>
-          </>
-        )}
+        <span className="upload-icon">🎬</span>
+        <p className="upload-title">Drop your video here</p>
+        <p className="upload-sub">or click to browse your files</p>
+        <button
+          type="button"
+          className="upload-btn"
+          onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+        >
+          <span>📂</span>
+          <span>Choose Video File</span>
+        </button>
+        <p className="upload-formats">
+          Supports: MP4, AVI, MOV, MKV, WebM, MPEG &amp; more
+        </p>
       </div>
     </div>
   );

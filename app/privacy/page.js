@@ -50,7 +50,17 @@ export default function PrivacyPage() {
             </div>
 
             <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', lineHeight: '1.8', marginTop: '2rem' }}>
-              Every single video you upload is processed temporarily to generate your clips. The moment you close the tab, refresh the page, or leave the site, <strong>every single trace of your video and data is instantly and permanently deleted</strong> from the server.
+              <strong>1. Can the Admin see the user's uploaded video or clips?</strong><br />
+              NO. Because we moved the processing entirely into your browser using WebAssembly, the video is completely private to you. It is never uploaded to the internet, so it is impossible for the Admin (or anyone else in the world) to see what video you uploaded or what clips you generated. The Admin panel will only show things like Contact Form messages.
+            </p>
+
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', lineHeight: '1.8', marginTop: '2rem' }}>
+              <strong>2. Are the video and clips saved on the Vercel website?</strong><br />
+              NO. Absolutely nothing is saved on Vercel. When a user visits our website, Vercel just sends them the code for the website. Once the website loads on their computer, the video processing happens 100% inside their own computer's RAM. Because it never goes to Vercel, it never saves on Vercel. 
+            </p>
+
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', lineHeight: '1.8', marginTop: '2rem' }}>
+              This is the ultimate privacy and cost-saving feature of our app! Users get complete privacy, and no one has to pay for server storage because the user's own computer holds the video files temporarily until they close the tab.
             </p>
           </div>
           

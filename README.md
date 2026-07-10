@@ -12,15 +12,15 @@
 <br/>
 
 [![Next.js](https://img.shields.io/badge/Next.js-14.2-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
-[![FFmpeg](https://img.shields.io/badge/FFmpeg-Native-007808?style=for-the-badge&logo=ffmpeg)](https://ffmpeg.org/)
+[![WebAssembly](https://img.shields.io/badge/WebAssembly-100%25_Private-654FF0?style=for-the-badge&logo=webassembly)](https://webassembly.org/)
+[![FFmpeg](https://img.shields.io/badge/FFmpeg.wasm-In_Browser-007808?style=for-the-badge&logo=ffmpeg)](https://ffmpeg.wasm.dev/)
 [![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)]()
 
 </div>
 
 <br />
 
-> Designed for rapid content generation, it utilizes zero-loss stream copying via `ffmpeg` to clip videos in a fraction of a second, wrapped in a beautiful, interactive visual dashboard.
+> Designed for rapid content generation, it utilizes WebAssembly via `@ffmpeg/ffmpeg` to clip videos directly inside your browser. No server uploads required, ensuring 100% privacy and zero file size limits!
 
 <div align="center">
   <img src="./public/logo.png" alt="Akku ClipGen Logo" width="220" height="220" style="border-radius: 50%; border: 4px solid #22d3ee; box-shadow: 0 0 25px rgba(34,211,238,0.6); margin: 25px 0;" />
@@ -30,16 +30,36 @@
 
 ## 🎐 What is Akku ClipGen?
 
-**Akku ClipGen** is a modern, anime-themed local web application built for creators to instantly cut, crop, and generate segments from large video files without any quality loss. It handles gigabytes of video locally on your machine with blazing speed.
+**Akku ClipGen** is a modern, anime-themed web application built for creators to instantly cut, crop, and generate segments from large video files. It leverages **WebAssembly** to handle gigabytes of video entirely inside the browser's memory, meaning **$0 server costs**, 100% free Vercel deployment, and unparalleled privacy.
 
 ### ✨ Key Features
 
 | Feature | Description |
 | :--- | :--- |
-| ⚡ **Zero-Loss Clipping** | Invokes native `ffmpeg` with stream copying (`-c copy`). A 1-hour video splits into chunks in seconds with bit-for-bit lossless quality. Works with `MP4`, `MKV`, `AVI`, `MOV`, `WebM`, `FLV`, etc. |
+| ⚡ **In-Browser WebAssembly** | Uses `@ffmpeg/ffmpeg` to process video on the client side. **No 4.5MB upload limits**, no server timeouts. The video never leaves your computer! |
+| 🚀 **100% Free Hosting** | Since the backend does zero heavy lifting, you can host this for free forever on Vercel without ever needing a credit card. |
 | 🎨 **Anime Cyber-Design** | Interactive canvas particles, glassmorphic interfaces, dynamic micro-animations, and curated HSL neon themes. |
 | 📧 **Contact Center** | Fully functional contact page with local storage persistence and automated email notifications via Nodemailer. |
 | 🛡️ **Multi-Admin Dashboard**| A secure command center to view, reply, and manage messages. Support for multiple secondary admin accounts. |
+
+### 🤯 How "Unlimited GB Uploads" Work (The WebAssembly Magic)
+
+Traditional video editing websites require you to **upload** your video to their server. If you upload a 2GB video, it takes a long time, consumes massive server bandwidth, and gets blocked by free hosting providers like Vercel (which have a strict 4.5MB upload limit).
+
+**Akku ClipGen bypasses this completely using WebAssembly (`@ffmpeg/ffmpeg`):**
+1. **Zero Uploads:** When you select a video, it is **never** sent over the internet.
+2. **Virtual Memory:** The app downloads a tiny `ffmpeg-core.wasm` engine into your browser. Your browser then creates a *Virtual File System* (MEMFS) in your computer's RAM.
+3. **Local Processing:** The video is loaded directly from your hard drive into this virtual memory. Your own computer's CPU runs the exact same video-cutting commands a powerful server would run, but it happens inside your Google Chrome/Edge/Firefox tab.
+4. **Instant Download:** Once the clip is generated, the browser creates a "Blob URL" (a temporary link pointing to your own RAM). When you click download, it saves instantly with zero network delay.
+
+Because your backend server does absolutely zero work, you can process massive gigabyte videos instantly, and host the website for **100% free**!
+
+### 🧹 How Automatic Memory Cleanup Works
+When dealing with massive video files in the browser, RAM management is critical. Akku ClipGen uses a three-tier automatic garbage collection system to ensure the user's computer never runs out of memory:
+
+1. **WebAssembly Virtual Memory (MEMFS) Cleanup:** While `ffmpeg.wasm` is generating clips, it creates temporary files inside a Virtual File System within the browser's RAM. As soon as a clip finishes generating, the app executes `ffmpeg.deleteFile()` to instantly flush the raw video data out of the WebAssembly heap.
+2. **Blob Revocation (Web API):** When a clip is ready for download, it is converted into a `Blob URL` (a DOM reference to raw binary data in RAM). If the user clicks "Remove Video" or starts over, the app executes `URL.revokeObjectURL()`. This native Web API forcefully destroys the reference, allowing the browser to instantly reclaim gigabytes of RAM.
+3. **V8 Engine Garbage Collection:** If the user completely closes the tab or refreshes the page, the browser's internal JavaScript Garbage Collector (e.g., Chrome's V8 engine) automatically flushes all remaining Blobs and WebAssembly memory instances, ensuring a completely clean slate.
 
 ---
 
@@ -50,11 +70,10 @@
 | Technology | Purpose | Description |
 | :--- | :--- | :--- |
 | ⚛️ **[Next.js 14.2](https://nextjs.org/)** | Framework | React framework for server-side rendering, routing, and full-stack architecture. |
-| 🟢 **[Node.js](https://nodejs.org/)** | Runtime | JavaScript runtime for backend API processing and local file system operations. |
-| 🎬 **[FFmpeg](https://ffmpeg.org/)** | Engine | The core media manipulation engine used to crop and process video without re-encoding. |
-| ✉️ **[Nodemailer](https://nodemailer.com/)**| Emails | Used for sending automated email notifications directly from the application via SMTP. |
+| 🌐 **[FFmpeg.wasm](https://ffmpeg.wasm.dev/)** | Engine | The core WebAssembly engine used to process video entirely inside the user's browser. |
+| ✉️ **[Nodemailer](https://nodemailer.com/)**| Emails | Used for sending automated email notifications directly from the backend via SMTP. |
 | 🎨 **Vanilla CSS** | Styling | Custom Properties (Variables) to create the dynamic glassmorphic and glowing cyber-neon themes. |
-| 💾 **Local Persistence**| Database | Node.js `fs` module to store persistent data locally in `tmp/data/`. |
+| 💾 **Local Persistence**| Database | Node.js `fs` module to store admin/contact data locally (Note: serverless environments may reset this data). |
 
 </details>
 
@@ -137,17 +156,13 @@ Akku ClipGen/
 │   │   └── page.js           # Admin messages reader & replies
 │   ├── api/
 │   │   ├── admin/            # Session & Admin management API
-│   │   ├── messages/         # Message retrieval & creation API
-│   │   ├── cleanup/          # File maintenance endpoint
-│   │   ├── generate/         # Video clipping engine endpoint
-│   │   ├── preview/          # Video preview generator
-│   │   └── upload/           # Video upload handler
-│   ├── components/           # 🎨 Interactive UI elements
+│   │   └── messages/         # Message retrieval & creation API
+│   ├── components/           # 🎨 Interactive UI elements (Client-side FFmpeg)
 │   ├── contact/              # 📧 Customer feedback panel
 │   ├── globals.css           # 🎨 Core design token system
 │   ├── layout.js             # HTML layout wrapper
 │   └── page.js               # 🏠 Main workspace page
-├── tmp/                      # 💾 Local storage (Clips, Uploads, JSON DB)
+├── tmp/                      # 💾 Local storage for JSON Admin DB
 ├── middleware.js             # 🛡️ Authentication Edge middleware
 └── package.json              # Project dependencies
 ```

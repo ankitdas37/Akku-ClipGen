@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 
 function formatDuration(secs) {
   const s = Math.round(secs);
@@ -17,129 +17,37 @@ function formatTimestamp(secs) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// ── Inline Player (video + audio tabs) ─────────────────────────────────
-function ClipInlinePlayer({ clip, jobId }) {
-  const [activeTab, setActiveTab]   = useState('mp4');   // 'mp4' | 'mp3'
-  const [mp3Ready, setMp3Ready]     = useState(false);
-  const [mp3Loading, setMp3Loading] = useState(false);
-  const audioRef = useRef(null);
-
-  const mp4Src = `/api/clip-preview?jobId=${encodeURIComponent(jobId)}&clip=${encodeURIComponent(clip.filename)}&format=mp4`;
-  const mp3Src = `/api/clip-preview?jobId=${encodeURIComponent(jobId)}&clip=${encodeURIComponent(clip.filename)}&format=mp3`;
-
-  const switchToMp3 = useCallback(async () => {
-    setActiveTab('mp3');
-    if (!mp3Ready) {
-      setMp3Loading(true);
-      // The audio element will trigger the MP3 conversion via the API when it loads
-      // We just need to set the src and let it load
-    }
-  }, [mp3Ready]);
-
+// ── Inline Player ────────────────────────────────────────────────────────
+function ClipInlinePlayer({ clip }) {
   return (
     <div className="clip-inline-player">
-      {/* Tab switcher */}
-      <div className="clip-player-tabs">
-        <button
-          type="button"
-          className={`clip-tab-btn tab-mp4${activeTab === 'mp4' ? ' active' : ''}`}
-          onClick={() => setActiveTab('mp4')}
-          id={`tab-mp4-${clip.index}`}
-        >
-          🎬 VIDEO
-        </button>
-        <button
-          type="button"
-          className={`clip-tab-btn tab-mp3${activeTab === 'mp3' ? ' active' : ''}`}
-          onClick={switchToMp3}
-          id={`tab-mp3-${clip.index}`}
-        >
-          🎵 AUDIO
-        </button>
-      </div>
-
       {/* MP4 Video Player */}
-      {activeTab === 'mp4' && (
-        <video
-          id={`clip-video-${clip.index}`}
-          className="clip-video-player"
-          src={mp4Src}
-          controls
-          controlsList="nodownload"
-          preload="metadata"
-        >
-          Your browser does not support the video tag.
-        </video>
-      )}
-
-      {/* MP3 Audio Player */}
-      {activeTab === 'mp3' && (
-        <div className="clip-audio-wrap">
-          {mp3Loading && !mp3Ready && (
-            <div style={{ position: 'absolute', display: 'none' }} />
-          )}
-          <div className="clip-audio-art">🎵</div>
-          <div className="clip-audio-label">Clip {String(clip.index).padStart(2, '0')} · Audio Track</div>
-          <audio
-            ref={audioRef}
-            id={`clip-audio-${clip.index}`}
-            className="clip-audio-player"
-            src={mp3Src}
-            controls
-            controlsList="nodownload"
-            preload="metadata"
-            onLoadStart={() => setMp3Loading(true)}
-            onCanPlay={() => { setMp3Loading(false); setMp3Ready(true); }}
-            onError={() => setMp3Loading(false)}
-          />
-          {mp3Loading && (
-            <div className="clip-player-loading">
-              <span className="clip-player-loading-icon">⚙️</span>
-              <span>Converting to MP3…</span>
-            </div>
-          )}
-        </div>
-      )}
+      <video
+        id={`clip-video-${clip.index}`}
+        className="clip-video-player"
+        src={clip.url}
+        controls
+        controlsList="nodownload"
+        preload="metadata"
+      >
+        Your browser does not support the video tag.
+      </video>
     </div>
   );
 }
 
 // ── Individual Clip Card ────────────────────────────────────────────────
-function ClipCard({ clip, jobId, index }) {
+function ClipCard({ clip, index }) {
   const [showPlayer, setShowPlayer] = useState(false);
-  const [mp4Loading, setMp4Loading] = useState(false);
-  const [mp3Loading, setMp3Loading] = useState(false);
 
-  const handleDownload = useCallback(async (format) => {
-    const setLoading = format === 'mp4' ? setMp4Loading : setMp3Loading;
-    setLoading(true);
-    try {
-      const url = `/api/download?jobId=${encodeURIComponent(jobId)}&clip=${encodeURIComponent(clip.filename)}&format=${format}`;
-      
-      // Check if clip still exists
-      const checkRes = await fetch(url, { method: 'HEAD' });
-      if (!checkRes.ok) {
-        if (checkRes.status === 404) {
-          alert("Your session has expired and the clips have been cleaned up. Redirecting to home...");
-          window.location.href = '/';
-          return;
-        }
-        throw new Error('Download failed');
-      }
-
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = clip.filename.replace('.mp4', `.${format}`);
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      await new Promise(r => setTimeout(r, 1500));
-    } catch (err) {
-      console.error('Download error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [clip, jobId]);
+  const handleDownload = useCallback(() => {
+    const a = document.createElement('a');
+    a.href = clip.url;
+    a.download = clip.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [clip]);
 
   return (
     <div
@@ -168,22 +76,11 @@ function ClipCard({ clip, jobId, index }) {
         <button
           id={`dl-mp4-${clip.index}`}
           type="button"
-          className={`clip-dl-btn mp4${mp4Loading ? ' loading' : ''}`}
-          onClick={() => handleDownload('mp4')}
-          disabled={mp4Loading || mp3Loading}
+          className="clip-dl-btn mp4"
+          onClick={handleDownload}
           title={`Download Clip ${clip.index} as MP4`}
         >
-          {mp4Loading ? '⏳' : '⬇️'} MP4
-        </button>
-        <button
-          id={`dl-mp3-${clip.index}`}
-          type="button"
-          className={`clip-dl-btn mp3${mp3Loading ? ' loading' : ''}`}
-          onClick={() => handleDownload('mp3')}
-          disabled={mp4Loading || mp3Loading}
-          title={`Download Clip ${clip.index} as MP3`}
-        >
-          {mp3Loading ? '⏳' : '🎵'} MP3
+          ⬇️ MP4
         </button>
       </div>
 
@@ -199,49 +96,26 @@ function ClipCard({ clip, jobId, index }) {
 
       {/* Inline player (video + audio tabs) */}
       {showPlayer && (
-        <ClipInlinePlayer clip={clip} jobId={jobId} />
+        <ClipInlinePlayer clip={clip} />
       )}
     </div>
   );
 }
 
 // ── Grid ────────────────────────────────────────────────────────────────
-export default function ClipGrid({ clips, jobId }) {
-  const [bulkMp4Loading, setBulkMp4Loading] = useState(false);
-  const [bulkMp3Loading, setBulkMp3Loading] = useState(false);
+export default function ClipGrid({ clips }) {
 
-  const handleBulkDownload = useCallback(async (format) => {
-    const setLoading = format === 'mp4' ? setBulkMp4Loading : setBulkMp3Loading;
-    setLoading(true);
-    try {
-      for (const clip of clips) {
-        const url = `/api/download?jobId=${encodeURIComponent(jobId)}&clip=${encodeURIComponent(clip.filename)}&format=${format}`;
-        
-        // Check if clip still exists
-        const checkRes = await fetch(url, { method: 'HEAD' });
-        if (!checkRes.ok) {
-          if (checkRes.status === 404) {
-            alert("Your session has expired and the clips have been cleaned up. Redirecting to home...");
-            window.location.href = '/';
-            return;
-          }
-          continue; // skip broken clips
-        }
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = clip.filename.replace('.mp4', `.${format}`);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        await new Promise(r => setTimeout(r, 800));
-      }
-    } catch (err) {
-      console.error('Bulk download error:', err);
-    } finally {
-      setLoading(false);
+  const handleBulkDownload = useCallback(async () => {
+    for (const clip of clips) {
+      const a = document.createElement('a');
+      a.href = clip.url;
+      a.download = clip.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      await new Promise(r => setTimeout(r, 800)); // slight delay between downloads
     }
-  }, [clips, jobId]);
+  }, [clips]);
 
   if (!clips || clips.length === 0) return null;
 
@@ -258,19 +132,9 @@ export default function ClipGrid({ clips, jobId }) {
             id="bulk-download-mp4"
             type="button"
             className="bulk-btn mp4"
-            onClick={() => handleBulkDownload('mp4')}
-            disabled={bulkMp4Loading || bulkMp3Loading}
+            onClick={handleBulkDownload}
           >
-            {bulkMp4Loading ? '⏳' : '⬇️'} Download All MP4
-          </button>
-          <button
-            id="bulk-download-mp3"
-            type="button"
-            className="bulk-btn mp3"
-            onClick={() => handleBulkDownload('mp3')}
-            disabled={bulkMp4Loading || bulkMp3Loading}
-          >
-            {bulkMp3Loading ? '⏳' : '🎵'} Download All MP3
+            ⬇️ Download All MP4
           </button>
         </div>
       </div>
@@ -280,7 +144,6 @@ export default function ClipGrid({ clips, jobId }) {
           <ClipCard
             key={clip.filename}
             clip={clip}
-            jobId={jobId}
             index={i}
           />
         ))}

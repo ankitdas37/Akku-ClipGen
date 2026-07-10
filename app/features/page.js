@@ -63,6 +63,15 @@ export default function FeaturesPage() {
             <h3 className="cute-feature-title">Zero Quality Loss</h3>
             <p className="cute-feature-desc">We use special stream-copying magic to make sure your clips look exactly as gorgeous as the original!</p>
           </div>
+
+          <div className="cute-feature-card" id="ultimate-privacy" style={{ gridColumn: '1 / -1', background: 'rgba(255, 105, 180, 0.05)' }}>
+            <div className="cute-feature-icon" style={{ display: 'inline-block', marginBottom: '0.5rem' }}>🛡️</div>
+            <h3 className="cute-feature-title">100% Private (No Vercel Uploads)</h3>
+            <p className="cute-feature-desc">
+              <strong>Can the Admin see the user's uploaded video?</strong> NO. Because we moved the processing entirely into your browser using WebAssembly, the video is completely private to you. It is never uploaded to the internet, so it is impossible for the Admin to see what video you uploaded.<br /><br />
+              <strong>Are the video and clips saved on Vercel?</strong> NO. Absolutely nothing is saved on Vercel. Once the website loads, the video processing happens 100% inside your own computer's RAM. Because it never goes to Vercel, it never saves on Vercel.
+            </p>
+          </div>
         </section>
       </main>
 

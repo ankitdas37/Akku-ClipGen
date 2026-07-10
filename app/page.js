@@ -1,10 +1,12 @@
 'use client';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import UploadZone from './components/UploadZone';
 import ClipConfigurator from './components/ClipConfigurator';
 import ClipGrid from './components/ClipGrid';
 import Footer from './components/Footer';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile } from '@ffmpeg/util';
 
 const ParticleBackground = dynamic(() => import('./components/ParticleBackground'), { ssr: false });
 
@@ -15,25 +17,8 @@ export default function Home() {
   const [genProgress, setGenProgress]   = useState(0);
   const [genStatus, setGenStatus]       = useState('');
   const [error, setError]               = useState('');
-
-  // Automatic cleanup when the user leaves the page, refreshes, or closes the browser tab
-  useEffect(() => {
-    const currentJobId = videoInfo?.jobId;
-    if (!currentJobId) return;
-
-    const handleBeforeUnload = () => {
-      // Use sendBeacon for reliable delivery during unload
-      navigator.sendBeacon(`/api/cleanup?jobId=${currentJobId}`);
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Also cleanup when the component unmounts (e.g., navigating to another page)
-      navigator.sendBeacon(`/api/cleanup?jobId=${currentJobId}`);
-    };
-  }, [videoInfo?.jobId]);
+  
+  const ffmpegRef = useRef(new FFmpeg());
 
   const handleUploadComplete = useCallback((info) => {
     setVideoInfo(info);
@@ -41,63 +26,126 @@ export default function Home() {
     setError('');
   }, []);
 
-  const handleRemove = useCallback(async () => {
-    if (videoInfo?.jobId) {
-      fetch(`/api/cleanup?jobId=${videoInfo.jobId}`).catch(() => {});
-    }
+  const handleRemove = useCallback(() => {
+    // Automatically delete (revoke) clips from browser RAM to free memory
+    clips.forEach(clip => URL.revokeObjectURL(clip.url));
+    
     setVideoInfo(null);
     setClips([]);
     setError('');
     setIsGenerating(false);
     setGenProgress(0);
-  }, [videoInfo]);
+  }, [clips]);
 
   const handleGenerate = useCallback(async (payload) => {
-    if (!videoInfo?.jobId || isGenerating) return;
+    if (!videoInfo?.file || isGenerating) return;
     setIsGenerating(true);
     setGenProgress(5);
     setGenStatus('Initialising ffmpeg…');
+    
+    // Cleanup old clips from memory if re-generating
+    clips.forEach(clip => URL.revokeObjectURL(clip.url));
     setClips([]);
     setError('');
 
     const isCustom = payload.mode === 'custom';
     const totalClips = isCustom ? payload.customSegments.length : Math.ceil(videoInfo.duration / payload.clipDuration);
-    let currentProgress = 5;
-    const interval = setInterval(() => {
-      currentProgress = Math.min(currentProgress + (85 / (totalClips * 3 + 5)), 88);
-      setGenProgress(currentProgress);
-    }, 400);
 
     try {
-      setGenStatus(`Splitting video into ${totalClips} clip${totalClips > 1 ? 's' : ''}…`);
-
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId: videoInfo.jobId,
-          totalDuration: videoInfo.duration,
-          ...payload
-        }),
+      const ffmpeg = ffmpegRef.current;
+      
+      ffmpeg.on('progress', ({ progress }) => {
+        setGenProgress(Math.min(10 + (progress * 85), 95));
       });
 
-      clearInterval(interval);
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Generation failed' }));
-        throw new Error(err.error || 'Failed to generate clips');
+      if (!ffmpeg.loaded) {
+        setGenStatus('Downloading FFmpeg core (first time only)…');
+        await ffmpeg.load({
+          coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+        });
       }
 
-      setGenProgress(95);
-      setGenStatus('Finalising clips…');
+      setGenStatus('Loading video into memory…');
+      const inputName = 'input_video.mp4';
+      await ffmpeg.writeFile(inputName, await fetchFile(videoInfo.file));
 
-      const data = await res.json();
+      setGenStatus(`Splitting video into ${totalClips} clip${totalClips > 1 ? 's' : ''}…`);
+
+      const duration = videoInfo.duration;
+      let segments = [];
+      const generatedClips = [];
+
+      if (isCustom) {
+        let clipIndex = 1;
+        for (const seg of payload.customSegments) {
+          if (seg.start >= 0 && seg.end > seg.start && seg.start < duration) {
+            segments.push({
+              index: clipIndex,
+              startTime: seg.start,
+              duration: seg.end - seg.start,
+              endTime: seg.end,
+              filename: `clip_custom_${String(clipIndex).padStart(3, '0')}.mp4`,
+              isRemainder: false
+            });
+            clipIndex++;
+          }
+        }
+      } else {
+        const clipDuration = payload.clipDuration;
+        let startTime = 0;
+        let clipIndex = 1;
+        while (startTime < duration - 0.5) {
+          const remaining = duration - startTime;
+          const segDuration = Math.min(clipDuration, remaining);
+          segments.push({
+            index: clipIndex,
+            startTime,
+            duration: segDuration,
+            endTime: startTime + segDuration,
+            filename: `clip_${String(clipIndex).padStart(3, '0')}.mp4`,
+            isRemainder: remaining < clipDuration,
+          });
+          startTime += segDuration;
+          clipIndex++;
+        }
+      }
+
+      if (segments.length === 0) {
+        throw new Error('No valid segments to generate.');
+      }
+
+      for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i];
+        setGenStatus(`Processing clip ${i + 1} of ${segments.length}…`);
+        
+        await ffmpeg.exec([
+          '-ss', String(seg.startTime),
+          '-i', inputName,
+          '-t', String(seg.duration),
+          '-c:v', 'copy',
+          '-c:a', 'copy',
+          seg.filename
+        ]);
+
+        const data = await ffmpeg.readFile(seg.filename);
+        const blob = new Blob([data.buffer], { type: 'video/mp4' });
+        const url = URL.createObjectURL(blob);
+
+        generatedClips.push({ ...seg, url });
+        
+        // Cleanup clip from memory after extracting blob
+        await ffmpeg.deleteFile(seg.filename);
+      }
+
+      // Cleanup input from memory
+      await ffmpeg.deleteFile(inputName);
 
       setGenProgress(100);
       setGenStatus('Done!');
 
       setTimeout(() => {
-        setClips(data.clips);
+        setClips(generatedClips);
         setIsGenerating(false);
         setGenProgress(0);
         setTimeout(() => {
@@ -105,7 +153,7 @@ export default function Home() {
         }, 100);
       }, 600);
     } catch (err) {
-      clearInterval(interval);
+      console.error(err);
       setError(err.message || 'Failed to generate clips. Please try again.');
       setIsGenerating(false);
       setGenProgress(0);
@@ -139,7 +187,7 @@ export default function Home() {
             <h1>Split Any Video<br />Into Perfect Clips</h1>
             <p className="hero-sub">
               Upload one long video, choose your clip length, and generate every segment
-              instantly — download each as <strong>MP4</strong> or <strong>MP3</strong> with zero quality loss.
+              instantly — all inside your browser. No size limits!
             </p>
           </section>
 
@@ -165,7 +213,7 @@ export default function Home() {
                 <div className="processing-section" role="status" aria-live="polite">
                   <span className="processing-icon">⚙️</span>
                   <h2 className="processing-title">{genStatus}</h2>
-                  <p className="processing-sub">Using ffmpeg to split your video — please wait…</p>
+                  <p className="processing-sub">Using FFmpeg WebAssembly (100% private in-browser processing)</p>
                   <div className="progress-track">
                     <div className="progress-fill" style={{ width: `${genProgress}%` }} />
                   </div>
@@ -174,7 +222,7 @@ export default function Home() {
               )}
 
               {!isGenerating && clips.length > 0 && (
-                <ClipGrid clips={clips} jobId={videoInfo.jobId} />
+                <ClipGrid clips={clips} />
               )}
             </>
           )}

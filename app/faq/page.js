@@ -43,8 +43,20 @@ export default function FAQPage() {
           
           <div className="cute-feature-card">
             <div className="cute-feature-icon">🔒</div>
-            <h3 className="cute-feature-title">Are my videos private?</h3>
-            <p className="cute-feature-desc">100% Yes! All your files are processed locally on this machine and are automatically deleted the second you leave the page or close your browser. 💖</p>
+            <h3 className="cute-feature-title">1. Can the Admin see the user's uploaded video or clips?</h3>
+            <p className="cute-feature-desc">NO. Because we moved the processing entirely into your browser using WebAssembly, the video is completely private to you. It is never uploaded to the internet, so it is impossible for the Admin (or anyone else in the world) to see what video you uploaded or what clips you generated. The Admin panel will only show things like Contact Form messages.</p>
+          </div>
+
+          <div className="cute-feature-card">
+            <div className="cute-feature-icon">☁️</div>
+            <h3 className="cute-feature-title">2. Are the video and clips saved on the Vercel website?</h3>
+            <p className="cute-feature-desc">NO. Absolutely nothing is saved on Vercel. When a user visits our website, Vercel just sends them the code for the website. Once the website loads on their computer, the video processing happens 100% inside their own computer's RAM. Because it never goes to Vercel, it never saves on Vercel.</p>
+          </div>
+
+          <div className="cute-feature-card" style={{ gridColumn: '1 / -1', background: 'rgba(255, 105, 180, 0.05)' }}>
+            <p className="cute-feature-desc" style={{ textAlign: 'center', margin: 0, fontWeight: 'bold', color: '#ff69b4' }}>
+              This is the ultimate privacy and cost-saving feature of our app! Users get complete privacy, and you don't have to pay for server storage because their own computer holds the video files temporarily until they close the tab.
+            </p>
           </div>
           
           <div className="cute-feature-card">
