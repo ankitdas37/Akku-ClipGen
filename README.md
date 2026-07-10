@@ -47,10 +47,11 @@
 Traditional video editing websites require you to **upload** your video to their server. If you upload a 2GB video, it takes a long time, consumes massive server bandwidth, and gets blocked by free hosting providers like Vercel (which have a strict 4.5MB upload limit).
 
 **Akku ClipGen bypasses this completely using WebAssembly (`@ffmpeg/ffmpeg`):**
-1. **Zero Uploads:** When you select a video, it is **never** sent over the internet.
-2. **Virtual Memory:** The app downloads a tiny `ffmpeg-core.wasm` engine into your browser. Your browser then creates a *Virtual File System* (MEMFS) in your computer's RAM.
-3. **Local Processing:** The video is loaded directly from your hard drive into this virtual memory. Your own computer's CPU runs the exact same video-cutting commands a powerful server would run, but it happens inside your Google Chrome/Edge/Firefox tab.
+1. **Unlimited File Sizes:** The video **never** uploads to any server. It stays 100% on the user's device, meaning you can process 1GB or even 5GB videos instantly.
+2. **Virtual Memory:** The app downloads a tiny `ffmpeg-core.wasm` engine into your browser. Your browser then creates a *Virtual File System* (MEMFS) in your RAM.
+3. **Local Processing:** The video is loaded directly from your storage into this virtual memory. Your own device's CPU runs the exact same video-cutting commands a powerful server would run.
 4. **Instant Download:** Once the clip is generated, the browser creates a "Blob URL" (a temporary link pointing to your own RAM). When you click download, it saves instantly with zero network delay.
+5. **📱 Does this work on Mobile? YES!** WebAssembly is supported on all modern mobile browsers (Safari on iOS, Chrome on Android). Users can split massive videos directly from their phone's camera roll without needing to download a separate app. The processing happens securely and locally on their smartphone's CPU!
 
 Because your backend server does absolutely zero work, you can process massive gigabyte videos instantly, and host the website for **100% free**!
 
