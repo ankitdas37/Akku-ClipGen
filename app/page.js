@@ -5,8 +5,9 @@ import UploadZone from './components/UploadZone';
 import ClipConfigurator from './components/ClipConfigurator';
 import ClipGrid from './components/ClipGrid';
 import Footer from './components/Footer';
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile } from '@ffmpeg/util';
+// Removed top-level ffmpeg imports to fix Node.js SSR crashes
+// import { FFmpeg } from '@ffmpeg/ffmpeg';
+// import { fetchFile } from '@ffmpeg/util';
 
 const ParticleBackground = dynamic(() => import('./components/ParticleBackground'), { ssr: false });
 
@@ -19,13 +20,6 @@ export default function Home() {
   const [error, setError]               = useState('');
   
   const ffmpegRef = useRef(null);
-
-  useEffect(() => {
-    // Only initialize FFmpeg on the client side to prevent Node.js SSR build errors
-    if (typeof window !== 'undefined' && !ffmpegRef.current) {
-      ffmpegRef.current = new FFmpeg();
-    }
-  }, []);
 
   const handleUploadComplete = useCallback((info) => {
     setVideoInfo(info);
@@ -59,6 +53,14 @@ export default function Home() {
     const totalClips = isCustom ? payload.customSegments.length : Math.ceil(videoInfo.duration / payload.clipDuration);
 
     try {
+      // DYNAMICALLY import FFmpeg to bypass Next.js server-side rendering (SSR) crash
+      const { FFmpeg } = await import('@ffmpeg/ffmpeg');
+      const { fetchFile } = await import('@ffmpeg/util');
+
+      if (!ffmpegRef.current) {
+        ffmpegRef.current = new FFmpeg();
+      }
+
       const ffmpeg = ffmpegRef.current;
       
       ffmpeg.on('progress', ({ progress }) => {
