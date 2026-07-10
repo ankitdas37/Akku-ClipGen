@@ -26,7 +26,7 @@ export async function POST(request) {
       isValid = true;
     } else {
       // Check secondary admins
-      const ADMINS_FILE = path.join(process.cwd(), 'tmp', 'data', 'admins.json');
+      const ADMINS_FILE = process.env.VERCEL ? '/tmp/data/admins.json' : path.join(process.cwd(), 'tmp', 'data', 'admins.json');
       if (existsSync(ADMINS_FILE)) {
         try {
           const admins = JSON.parse(readFileSync(ADMINS_FILE, 'utf8'));

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 
-const DATA_DIR = path.join(process.cwd(), 'tmp', 'data');
+const DATA_DIR = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'tmp', 'data');
 const MSG_FILE = path.join(DATA_DIR, 'messages.json');
 
 function readMessages() {

@@ -3,7 +3,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import nodemailer from 'nodemailer';
 
-const DATA_DIR  = path.join(process.cwd(), 'tmp', 'data');
+const DATA_DIR = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'tmp', 'data');
 const MSG_FILE  = path.join(DATA_DIR, 'messages.json');
 
 function ensureFile() {
