@@ -7,7 +7,7 @@
 
 **A high-performance local video/audio cropper and segmenter styled with a premium Cyber-Neon Anime aesthetic.**
 
-🌐 **[Live Demo / Deployment Link](https://akku-clip-gen.vercel.app)** &nbsp; • &nbsp; 💻 **[GitHub Repository](https://github.com/ankitdas37/Akku-ClipGen)** &nbsp; • &nbsp; 📖 **[Project Handbook PDF](./Project_Documentation.pdf)**
+🌐 **[Live Demo / Deployment Link](https://akku-clipgen.onrender.com/)** &nbsp; • &nbsp; 💻 **[GitHub Repository](https://github.com/ankitdas37/Akku-ClipGen)** &nbsp; • &nbsp; 📖 **[Project Handbook PDF](./Project_Documentation.pdf)**
 
 <br/>
 
@@ -195,6 +195,6 @@ Akku ClipGen/
 <br/>
 
 `✦ ─── ⋆ 🌸 ⋆ ─── ✦`
-*May your clips render instantly and your styling stay cybernetic!*
+
 
 </div>
