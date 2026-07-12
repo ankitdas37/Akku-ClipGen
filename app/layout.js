@@ -14,17 +14,29 @@ const nunito = Nunito({
 });
 
 export const metadata = {
+  metadataBase: new URL('https://akku-clipgen.onrender.com'),
   title: 'Akku ClipGen — Anime Video Clip Generator',
   description:
-    'Upload any long video and instantly split it into equal-duration clips. Download each segment as MP4 or MP3 with one click. Powered by Akku ClipGen.',
-  icons: {
-    icon: '/logo.png',
-    apple: '/logo.png',
+    'Upload any long video and instantly split it into equal-duration clips. Download each segment as MP4 or MP3 with one click. High-performance local video/audio cropper and segmenter.',
+  keywords: ['video splitter', 'clip generator', 'anime video cropper', 'MP4 splitter', 'MP3 converter', 'browser video editor', 'Akku ClipGen'],
+  authors: [{ name: 'Akku ClipGen' }],
+  creator: 'Akku ClipGen',
+  publisher: 'Akku ClipGen',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
   openGraph: {
-    title: 'Akku ClipGen',
-    description: 'High-performance local video/audio cropper and segmenter with a Cyber-Neon Anime aesthetic.',
-    url: 'https://akku-clip-gen.vercel.app',
+    title: 'Akku ClipGen — Anime Video Clip Generator',
+    description: 'Instantly split long videos into equal-duration clips. Download segments as MP4 or MP3 with one click right in your browser.',
+    url: 'https://akku-clipgen.onrender.com',
     siteName: 'Akku ClipGen',
     images: [
       {
@@ -39,8 +51,8 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Akku ClipGen',
-    description: 'High-performance local video/audio cropper and segmenter.',
+    title: 'Akku ClipGen — Anime Video Clip Generator',
+    description: 'Instantly split long videos into equal-duration clips. Download segments as MP4 or MP3 with one click.',
     images: ['/logo.png'],
   },
 };

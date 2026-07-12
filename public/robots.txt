@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://akku-clipgen.onrender.com/sitemap.xml
