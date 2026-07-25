@@ -1,0 +1,15 @@
+# ── Akku ClipGen — nixpacks build config ────────────────────────────
+# Ensures ffmpeg is available as a system package on the Railway Linux host.
+# ffmpeg-static (npm) also bundles its own binary, but system ffmpeg is a fallback.
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "ffmpeg"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm start"

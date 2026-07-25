@@ -17,51 +17,123 @@ function formatTimestamp(secs) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// ── Inline Player ────────────────────────────────────────────────────────
+function isIOS() {
+  if (typeof navigator === 'undefined') return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+/**
+ * Universal save function — works on PC, Android, and iOS.
+ *
+ * Priority:
+ *  1. Web Share API with file  → iOS 15+, Android Chrome, Desktop Chrome  (best UX on mobile)
+ *  2. Anchor <a download>      → Desktop browsers, Android  (fast, no fetch needed)
+ *  3. Open in new tab          → Fallback for browsers that block both above
+ */
+async function saveClip(url, filename, mimeType, onStatus) {
+  // ── Try Web Share API (best on mobile / iOS) ─────────────────────────────
+  if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+    try {
+      onStatus('loading');
+      const res   = await fetch(url);
+      const blob  = await res.blob();
+      const file  = new File([blob], filename, { type: mimeType });
+
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+        onStatus('done');
+        return;
+      }
+    } catch (err) {
+      // User cancelled share or Web Share failed — fall through to next method
+      if (err.name === 'AbortError') { onStatus('done'); return; }
+    }
+  }
+
+  // ── Anchor download (desktop + Android Chrome) ────────────────────────────
+  if (!isIOS()) {
+    try {
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = filename;
+      a.target   = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      onStatus('done');
+      return;
+    } catch (_) {}
+  }
+
+  // ── iOS fallback: fetch → blob URL → anchor ───────────────────────────────
+  // The download attribute is ignored on iOS Safari, but opening the blob
+  // URL in a new tab lets users long-press → "Save to Files / Photos"
+  try {
+    onStatus('loading');
+    const res     = await fetch(url);
+    const blob    = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    onStatus('open');   // show "tap & hold → Save" tip
+  } catch (_) {
+    // Last resort
+    window.open(url, '_blank');
+    onStatus('open');
+  }
+}
+
+// ── Inline Player ────────────────────────────────────────────────────────────
 function ClipInlinePlayer({ clip }) {
-  const isMp3 = clip.format === 'mp3';
+  const isMp3 = clip.format === 'mp3' || clip.format === 'webm';
+  const src   = clip.url;
   return (
     <div className="clip-inline-player">
       {isMp3 ? (
         <audio
           id={`clip-audio-${clip.index}`}
           className="clip-audio-player"
-          src={clip.url}
+          src={src}
           controls
-          controlsList="nodownload"
           preload="metadata"
           style={{ width: '100%', outline: 'none', borderRadius: '8px', marginTop: '10px' }}
         >
-          Your browser does not support the audio tag.
+          Your browser does not support audio.
         </audio>
       ) : (
         <video
           id={`clip-video-${clip.index}`}
           className="clip-video-player"
-          src={clip.url}
+          src={src}
           controls
-          controlsList="nodownload"
+          playsInline
           preload="metadata"
         >
-          Your browser does not support the video tag.
+          Your browser does not support video.
         </video>
       )}
     </div>
   );
 }
 
-// ── Individual Clip Card ────────────────────────────────────────────────
+// ── Individual Clip Card ──────────────────────────────────────────────────────
 function ClipCard({ clip, index }) {
-  const [showPlayer, setShowPlayer] = useState(false);
+  const [showPlayer,   setShowPlayer]   = useState(false);
+  const [dlState,      setDlState]      = useState('idle'); // idle|loading|done|open
 
-  const handleDownload = useCallback(() => {
-    const a = document.createElement('a');
-    a.href = clip.url;
-    a.download = clip.filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, [clip]);
+  const mime = clip.format === 'mp3' ? 'audio/mpeg'
+             : clip.format === 'webm' ? 'video/webm'
+             : 'video/mp4';
+
+  const handleDownload = useCallback(async () => {
+    if (dlState === 'loading') return;
+    await saveClip(clip.url, clip.filename, mime, setDlState);
+  }, [clip, mime, dlState]);
+
+  const dlLabel = dlState === 'loading' ? '⏳ Saving…'
+                : dlState === 'done'    ? '✅ Saved!'
+                : dlState === 'open'    ? '👆 Long-press → Save'
+                : `⬇️ ${(clip.format || 'mp4').toUpperCase()}`;
 
   return (
     <div
@@ -78,25 +150,31 @@ function ClipCard({ clip, index }) {
       </div>
 
       {/* Duration & timestamp */}
-      <div className="clip-duration-display">
-        {formatDuration(clip.duration)}
-      </div>
+      <div className="clip-duration-display">{formatDuration(clip.duration)}</div>
       <div className="clip-timestamp">
         {formatTimestamp(clip.startTime)} → {formatTimestamp(clip.endTime)}
       </div>
 
-      {/* Download buttons */}
+      {/* Download button */}
       <div className="clip-actions">
         <button
           id={`dl-${clip.format}-${clip.index}`}
           type="button"
           className="clip-dl-btn mp4"
           onClick={handleDownload}
-          title={`Download Clip ${clip.index} as ${clip.format === 'mp3' ? 'MP3' : 'MP4'}`}
+          disabled={dlState === 'loading'}
+          title={`Save Clip ${clip.index}`}
         >
-          ⬇️ {clip.format === 'mp3' ? 'MP3' : 'MP4'}
+          {dlLabel}
         </button>
       </div>
+
+      {/* iOS "open in new tab" hint */}
+      {dlState === 'open' && (
+        <p style={{ fontSize: '11px', color: '#aaa', marginTop: '6px', textAlign: 'center' }}>
+          Tap &amp; hold the video → <strong>Save to Files</strong> or <strong>Save to Photos</strong>
+        </p>
+      )}
 
       {/* Preview toggle */}
       <button
@@ -108,30 +186,31 @@ function ClipCard({ clip, index }) {
         {showPlayer ? '▲ Hide Preview' : '▶ Preview Clip'}
       </button>
 
-      {/* Inline player (video + audio tabs) */}
-      {showPlayer && (
-        <ClipInlinePlayer clip={clip} />
-      )}
+      {showPlayer && <ClipInlinePlayer clip={clip} />}
     </div>
   );
 }
 
-// ── Grid ────────────────────────────────────────────────────────────────
+// ── Grid ──────────────────────────────────────────────────────────────────────
 export default function ClipGrid({ clips }) {
+  const [bulkState, setBulkState] = useState('idle');
 
   const handleBulkDownload = useCallback(async () => {
-    for (const clip of clips) {
-      const a = document.createElement('a');
-      a.href = clip.url;
-      a.download = clip.filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      await new Promise(r => setTimeout(r, 800)); // slight delay between downloads
-    }
-  }, [clips]);
+    if (bulkState === 'loading') return;
+    setBulkState('loading');
 
-  if (!clips || clips.length === 0) return null;
+    for (const clip of clips) {
+      const mime = clip.format === 'mp3' ? 'audio/mpeg'
+                 : clip.format === 'webm' ? 'video/webm'
+                 : 'video/mp4';
+      await saveClip(clip.url, clip.filename, mime, () => {});
+      await new Promise(r => setTimeout(r, 600));
+    }
+    setBulkState('done');
+    setTimeout(() => setBulkState('idle'), 3000);
+  }, [clips, bulkState]);
+
+  if (!clips?.length) return null;
 
   return (
     <div className="clips-section">
@@ -147,19 +226,18 @@ export default function ClipGrid({ clips }) {
             type="button"
             className="bulk-btn mp4"
             onClick={handleBulkDownload}
+            disabled={bulkState === 'loading'}
           >
-            ⬇️ Download All
+            {bulkState === 'loading' ? '⏳ Saving…'
+           : bulkState === 'done'    ? '✅ Done!'
+           : '⬇️ Download All'}
           </button>
         </div>
       </div>
 
       <div className="clips-grid">
         {clips.map((clip, i) => (
-          <ClipCard
-            key={clip.filename}
-            clip={clip}
-            index={i}
-          />
+          <ClipCard key={clip.filename || i} clip={clip} index={i} />
         ))}
       </div>
     </div>
