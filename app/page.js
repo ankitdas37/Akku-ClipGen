@@ -70,6 +70,41 @@ function xhrUpload(file, onProgress, signal) {
   });
 }
 
+/**
+ * For custom clips: instead of uploading the entire large file, upload only
+ * the slice from byte 0 → estimated end of the last clip (+ keyframe buffer).
+ *
+ * Works because:
+ *  - The file header / moov atom is always at the start (included in slice)
+ *  - FFmpeg's fast keyframe seek (-ss before -i) needs the header + the
+ *    data around the requested timestamps — nothing past the last clip.
+ *
+ * Returns null when it's NOT worth slicing (clips too close to end of video).
+ */
+function buildPartialSlice(file, segments, totalDuration) {
+  if (!segments.length) return null;
+
+  const KEYFRAME_BUFFER_SECS = 120; // 2-min buffer before first clip for keyframe alignment
+  const TAIL_BUFFER_SECS     = 60;  // 1-min buffer after last clip
+
+  const maxEndTime  = Math.max(...segments.map(s => s.endTime));
+  const sliceEndSec = Math.min(totalDuration, maxEndTime + TAIL_BUFFER_SECS);
+
+  // Estimate end byte (include tail buffer)
+  const sliceEndByte = Math.ceil((sliceEndSec / totalDuration) * file.size);
+
+  // Only slice if we save at least 20% of the file — otherwise not worth it
+  const savingRatio = 1 - sliceEndByte / file.size;
+  if (savingRatio < 0.20) return null;
+
+  const sliceBlob    = file.slice(0, sliceEndByte);
+  const sliceSizeMB  = sliceEndByte / (1024 * 1024);
+  const originalSizeMB = file.size / (1024 * 1024);
+  const savedPct     = Math.round(savingRatio * 100);
+
+  return { blob: sliceBlob, sliceSizeMB, originalSizeMB, savedPct };
+}
+
 // ─── Engine B: Browser MediaRecorder (mobile standalone, any file size) ──────
 function recordOneClip(fileUrl, seg, mimeType, cancelRef) {
   return new Promise((resolve, reject) => {
@@ -142,8 +177,8 @@ async function runMediaRecorder(file, segments, isMp3, cancelRef, onProgress, on
     for (let i = 0; i < segments.length; i++) {
       if (cancelRef.current) break;
       const seg = segments[i];
-      const estSec = Math.round(seg.duration / 16);
-      onStatus(`📱 Clip ${i + 1}/${segments.length} — recording (~${estSec}s remaining)…`);
+      const estSec = Math.max(1, Math.round(seg.duration / 16));
+      onStatus(`📂 Clip ${i + 1} of ${segments.length} — extracting (~${estSec}s, no upload)…`);
       onProgress(5 + Math.round((i / segments.length) * 90));
 
       const blob = await recordOneClip(fileUrl, seg, isMp3 ? bestMime(false) : mime, cancelRef);
@@ -218,13 +253,14 @@ async function runFFmpegWasm(file, segments, isMp3, cancelRef, onProgress, onSta
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function Home() {
-  const [videoInfo, setVideoInfo]       = useState(null);
-  const [clips, setClips]               = useState([]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [genProgress, setGenProgress]   = useState(0);
-  const [genStatus, setGenStatus]       = useState('');
-  const [genEngine, setGenEngine]       = useState(''); // 'server'|'wasm'|'mediarecorder'
-  const [error, setError]               = useState('');
+  const [videoInfo, setVideoInfo]         = useState(null);
+  const [clips, setClips]                 = useState([]);
+  const [totalExpected, setTotalExpected] = useState(0);
+  const [isGenerating, setIsGenerating]   = useState(false);
+  const [genProgress, setGenProgress]     = useState(0);
+  const [genStatus, setGenStatus]         = useState('');
+  const [genEngine, setGenEngine]         = useState(''); // 'server'|'wasm'|'mediarecorder'
+  const [error, setError]                 = useState('');
 
   const abortRef   = useRef(null);
   const cancelRef  = useRef(false);
@@ -244,7 +280,7 @@ export default function Home() {
   }, []);
 
   const handleRemove = useCallback(() => {
-    setVideoInfo(null); setClips([]); setError('');
+    setVideoInfo(null); setClips([]); setTotalExpected(0); setError('');
     setIsGenerating(false); setGenProgress(0); setGenEngine('');
   }, []);
 
@@ -253,6 +289,7 @@ export default function Home() {
     abortRef.current?.abort();
     if (ffmpegRef.current) { try { ffmpegRef.current.terminate(); } catch (_) {} ffmpegRef.current = null; }
     setIsGenerating(false); setGenProgress(0); setGenStatus(''); setGenEngine('');
+    setTotalExpected(0);
     setError('Generation was cancelled.');
   }, []);
 
@@ -264,7 +301,7 @@ export default function Home() {
     cancelRef.current = false;
 
     setIsGenerating(true); setGenProgress(2); setGenEngine('detecting');
-    setGenStatus('Detecting best engine…'); setClips([]); setError('');
+    setGenStatus('Detecting best engine…'); setClips([]); setTotalExpected(0); setError('');
 
     // Build segments
     const segments = [];
@@ -295,9 +332,25 @@ export default function Home() {
       // ── Engine selection ─────────────────────────────────────────────────
       const hasServer = await serverAvailable();
       let engine;
+      let partialSlice = null; // Used for smart partial upload
 
       if (hasServer) {
-        engine = 'server'; // Always prefer server when available (fastest, unlimited)
+        if (payload.mode === 'custom' && fileMB > 300) {
+          // Custom clips on a large file: avoid uploading the whole thing.
+          // Try to build a partial slice (file start → end of last clip + buffer).
+          partialSlice = buildPartialSlice(videoInfo.file, segments, videoInfo.duration);
+
+          if (partialSlice) {
+            // We can save ≥20% — use server with partial upload
+            engine = 'server';
+          } else {
+            // Clips are near the end; slicing saves nothing meaningful.
+            // Use MediaRecorder: reads file locally, zero upload.
+            engine = 'mediarecorder';
+          }
+        } else {
+          engine = 'server'; // Full file upload (auto-split or small file)
+        }
       } else if (!mobile && fileMB <= 500) {
         engine = 'wasm';   // Desktop + small file → FFmpeg WASM
       } else {
@@ -310,15 +363,25 @@ export default function Home() {
       // ENGINE: SERVER (PC local server or cloud deployment)
       // ════════════════════════════════════════════════════════════════════
       if (engine === 'server') {
-        setGenStatus(`Uploading ${videoInfo.sizeFormatted} to server…`);
+        // Determine what to upload: partial slice or full file
+        const uploadBlob   = partialSlice ? partialSlice.blob : videoInfo.file;
+        const uploadSizeFmt = partialSlice
+          ? `${formatBytes(partialSlice.sliceSizeMB * 1024 * 1024)} (saved ${partialSlice.savedPct}% — smart clip upload)`
+          : videoInfo.sizeFormatted;
+
+        setGenStatus(partialSlice
+          ? `⚡ Smart upload: ${formatBytes(partialSlice.blob.size)} of ${videoInfo.sizeFormatted}…`
+          : `Uploading ${videoInfo.sizeFormatted} to server…`);
         setGenProgress(2);
 
         const jobId = await xhrUpload(
-          videoInfo.file,
+          uploadBlob,
           (ratio) => {
             if (cancelRef.current) return;
             setGenProgress(Math.round(ratio * 45) + 2);
-            setGenStatus(`Uploading… ${formatBytes(videoInfo.file.size * ratio)} / ${videoInfo.sizeFormatted}`);
+            setGenStatus(`Uploading… ${formatBytes(uploadBlob.size * ratio)} / ${formatBytes(uploadBlob.size)}${
+              partialSlice ? ` (smart clip — not full file)` : ''
+            }`);
           },
           abort.signal
         );
@@ -348,15 +411,28 @@ export default function Home() {
             try {
               const data = JSON.parse(line);
               if (data.error) throw new Error(data.error);
+
+              // Update total expected count from first message
+              if (typeof data.clipsTotal === 'number') setTotalExpected(data.clipsTotal);
+
+              // ✅ Progressive: add each clip as it arrives
+              if (data.clip) {
+                setClips(prev => [...prev, data.clip]);
+                // Scroll to clips section on first clip
+                if (data.clipsReady === 1) {
+                  setTimeout(() => document.querySelector('.clips-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+                }
+              }
+
               if (data.status) setGenStatus(data.status);
               if (typeof data.progress === 'number') setGenProgress(48 + Math.round((data.progress / 100) * 52));
+
               if (data.done) {
                 done = true;
                 setGenProgress(100); setGenStatus('✅ All clips ready!');
                 setTimeout(() => {
-                  setClips(data.clips ?? []); setIsGenerating(false);
-                  setGenEngine(''); setGenProgress(0);
-                  setTimeout(() => document.querySelector('.clips-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                  setIsGenerating(false);
+                  setGenEngine(''); setGenProgress(0); setTotalExpected(0);
                 }, 600);
               }
             } catch (e) { if (e.message !== 'cancelled') throw e; }
@@ -385,10 +461,16 @@ export default function Home() {
       }
 
       // ════════════════════════════════════════════════════════════════════
-      // ENGINE: MediaRecorder (mobile standalone — any file size)
+      // ENGINE: MediaRecorder (large custom clips / mobile — no upload needed)
       // ════════════════════════════════════════════════════════════════════
       if (engine === 'mediarecorder') {
-        setGenStatus('Starting mobile recording engine…'); setGenProgress(3);
+        const isBigCustom = payload.mode === 'custom' && fileMB > 300;
+        setGenStatus(
+          isBigCustom
+            ? `📂 Reading clips directly from your file (no upload needed)…`
+            : 'Starting browser recording engine…'
+        );
+        setGenProgress(3);
         const mrClips = await runMediaRecorder(
           videoInfo.file, segments, isMp3, cancelRef,
           setGenProgress, setGenStatus
@@ -411,9 +493,9 @@ export default function Home() {
   }, [videoInfo, isGenerating]);
 
   const engineLabel = {
-    server:        '⚡ Server FFmpeg — unlimited size, instant',
-    wasm:          '🔧 FFmpeg WebAssembly — in-browser processing',
-    mediarecorder: '📱 Mobile engine — works on any file size',
+    server:        '⚡ Server FFmpeg — fast native processing',
+    wasm:          '🔧 FFmpeg WebAssembly — in-browser, no upload',
+    mediarecorder: '📂 Browser engine — reads file locally, zero upload',
     detecting:     '🔍 Auto-selecting best engine…',
   }[genEngine] || '';
 
@@ -468,6 +550,17 @@ export default function Home() {
                   </span>
                   <h2 className="processing-title">{genStatus}</h2>
                   <p className="processing-sub">{engineLabel}</p>
+
+                  {/* Live clip counter — shown once we know how many clips to expect */}
+                  {totalExpected > 0 && (
+                    <div className="gen-clip-counter">
+                      <span className="gen-clip-ready">{clips.length}</span>
+                      <span className="gen-clip-sep"> / </span>
+                      <span className="gen-clip-total">{totalExpected}</span>
+                      <span className="gen-clip-label">clips generated</span>
+                    </div>
+                  )}
+
                   <div className="progress-track">
                     <div className="progress-fill" style={{ width: `${genProgress}%` }} />
                   </div>
@@ -478,9 +571,17 @@ export default function Home() {
                     onClick={handleCancel}
                   >🛑 Cancel</button>
                 </div>
+
               )}
 
-              {!isGenerating && clips.length > 0 && <ClipGrid clips={clips} />}
+              {/* Show clips progressively — even while still generating */}
+              {clips.length > 0 && (
+                <ClipGrid
+                  clips={clips}
+                  isGenerating={isGenerating}
+                  totalExpected={totalExpected}
+                />
+              )}
             </>
           )}
         </main>

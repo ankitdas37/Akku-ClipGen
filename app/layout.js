@@ -15,13 +15,19 @@ const nunito = Nunito({
 
 export const metadata = {
   metadataBase: new URL('https://akku-clipgen.onrender.com'),
-  title: 'Akku ClipGen — Anime Video Clip Generator',
-  description:
-    'Upload any long video and instantly split it into equal-duration clips. Download each segment as MP4 or MP3 with one click. High-performance local video/audio cropper and segmenter.',
-  keywords: ['video splitter', 'clip generator', 'anime video cropper', 'MP4 splitter', 'MP3 converter', 'browser video editor', 'Akku ClipGen'],
+  title: 'Akku ClipGen — Free AI Video Clipper & Shorts Generator',
+  description: 'Upload any long video and instantly split it into viral shorts or equal-duration clips. Download segments as MP4 or MP3 fast. No watermark, high-performance browser video cropper.',
+  keywords: [
+    'video splitter', 'clip generator', 'anime video cropper', 'MP4 splitter', 
+    'MP3 converter', 'browser video editor', 'YouTube Shorts maker', 
+    'TikTok clip maker', 'AI video clipper', 'free video cutter', 'Akku ClipGen'
+  ],
   authors: [{ name: 'Akku ClipGen' }],
   creator: 'Akku ClipGen',
   publisher: 'Akku ClipGen',
+  alternates: {
+    canonical: 'https://akku-clipgen.onrender.com',
+  },
   robots: {
     index: true,
     follow: true,
@@ -34,8 +40,8 @@ export const metadata = {
     },
   },
   openGraph: {
-    title: 'Akku ClipGen — Anime Video Clip Generator',
-    description: 'Instantly split long videos into equal-duration clips. Download segments as MP4 or MP3 with one click right in your browser.',
+    title: 'Akku ClipGen — Free AI Video Clipper & Shorts Generator',
+    description: 'Instantly split long videos into clips. Download segments as MP4 or MP3 with one click right in your browser.',
     url: 'https://akku-clipgen.onrender.com',
     siteName: 'Akku ClipGen',
     images: [
@@ -51,15 +57,37 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Akku ClipGen — Anime Video Clip Generator',
-    description: 'Instantly split long videos into equal-duration clips. Download segments as MP4 or MP3 with one click.',
+    title: 'Akku ClipGen — Free Video Clipper',
+    description: 'Instantly split long videos into clips. Download segments as MP4 or MP3 with one click.',
     images: ['/logo.png'],
   },
 };
 
 export default function RootLayout({ children }) {
+  // Schema.org Structured Data for Google (SoftwareApplication)
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Akku ClipGen',
+    operatingSystem: 'Any',
+    applicationCategory: 'MultimediaApplication',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    description: 'A fast, high-performance web application that instantly splits long videos into smaller MP4 clips or MP3 audio tracks directly in the browser.',
+    url: 'https://akku-clipgen.onrender.com',
+  };
+
   return (
     <html lang="en" className={`${orbitron.variable} ${nunito.variable}`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

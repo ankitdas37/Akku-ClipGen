@@ -2932,3 +2932,390 @@ h1, h2, h3, h4 { font-family: var(--font-heading); }
 .custom-range-slider:focus {
   outline: none;
 }
+
+/* ══════════════════════════════════════════════════════
+   PROGRESSIVE CLIP STREAMING — NEW UI ELEMENTS
+   ══════════════════════════════════════════════════════ */
+
+/* ── Live count badge ──────────────────────────────────── */
+.clips-count-badge--live {
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--cyan-glow);
+  border-color: rgba(34, 211, 238, 0.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.3); }
+  50%       { box-shadow: 0 0 0 4px rgba(34, 211, 238, 0); }
+}
+
+/* Pulsing live dot */
+.clips-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+  display: inline-block;
+  animation: live-pulse 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* ── Clip size badge ───────────────────────────────────── */
+.clip-size-badge {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  margin-top: -0.9rem;
+  font-family: var(--font-heading);
+}
+
+/* ── Ghost placeholder cards ───────────────────────────── */
+.clip-card--ghost {
+  opacity: 0.45;
+  pointer-events: none;
+  animation: cardPop 0.4s ease both;
+}
+
+.clip-ghost-shimmer {
+  height: 60px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(124, 58, 237, 0.08) 25%,
+    rgba(124, 58, 237, 0.18) 50%,
+    rgba(124, 58, 237, 0.08) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  margin: 0.75rem 0;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.clip-ghost-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.5rem;
+  font-family: var(--font-heading);
+  letter-spacing: 0.05em;
+}
+
+/* ── Selected card highlight ───────────────────────────── */
+.clip-card--selected {
+  border-color: var(--cyan) !important;
+  background: rgba(34, 211, 238, 0.06) !important;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.3) !important;
+}
+
+.clip-card--selected::before {
+  opacity: 1;
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+}
+
+/* ── Selection checkbox overlay ────────────────────────── */
+.clip-select-label {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.clip-select-checkbox {
+  display: none;
+}
+
+.clip-select-checkmark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid rgba(34, 211, 238, 0.5);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  font-size: 0.9rem;
+  color: var(--cyan);
+  font-weight: 700;
+  transition: all var(--transition-fast);
+}
+
+.clip-select-label:hover .clip-select-checkmark {
+  border-color: var(--cyan);
+  background: rgba(34, 211, 238, 0.15);
+}
+
+.clip-card--selected .clip-select-checkmark {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  color: #000;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+}
+
+/* ── Select-mode action buttons ────────────────────────── */
+.bulk-btn.select-mode-btn {
+  background: rgba(34, 211, 238, 0.08);
+  color: var(--cyan);
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+.bulk-btn.select-mode-btn:hover,
+.bulk-btn.select-mode-btn.active {
+  background: rgba(34, 211, 238, 0.18);
+  border-color: var(--cyan);
+  box-shadow: 0 4px 14px rgba(34, 211, 238, 0.2);
+}
+
+.bulk-btn.select-all-btn {
+  background: rgba(251, 191, 36, 0.08);
+  color: var(--gold);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.bulk-btn.select-all-btn:hover {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: var(--gold);
+}
+
+.bulk-btn.clear-btn {
+  background: rgba(255, 80, 80, 0.08);
+  color: #ff8888;
+  border-color: rgba(255, 80, 80, 0.3);
+}
+
+.bulk-btn.clear-btn:hover {
+  background: rgba(255, 80, 80, 0.18);
+  border-color: #ff5555;
+}
+
+.bulk-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Live clip generation counter ──────────────────────── */
+.gen-clip-counter {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  margin: 1.25rem 0 1rem;
+  background: rgba(34, 211, 238, 0.07);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 16px;
+  padding: 0.75rem 1.5rem;
+  animation: slideUp 0.3s ease;
+}
+
+.gen-clip-ready {
+  font-family: var(--font-heading);
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: var(--cyan-glow);
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
+  transition: all 0.2s ease;
+}
+
+.gen-clip-sep {
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.gen-clip-total {
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.gen-clip-label {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  align-self: center;
+  letter-spacing: 0.04em;
+  margin-left: 4px;
+}
+
+/* ══════════════════════════════════════════════════════
+   CUSTOM CLIP TIME PICKER
+   ══════════════════════════════════════════════════════ */
+
+/* ── Helper hint ───────────────────────────────────────── */
+.custom-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(34, 211, 238, 0.06);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+/* ── Segment row ───────────────────────────────────────── */
+.custom-seg-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.custom-seg-index {
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--violet-glow);
+  background: var(--violet-dim);
+  border: 1px solid rgba(124,58,237,0.3);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.custom-seg-duration {
+  font-size: 0.78rem;
+  color: var(--cyan);
+  font-weight: 600;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-family: var(--font-heading);
+}
+
+.custom-seg-error {
+  font-size: 0.75rem;
+  color: #ff7777;
+  font-weight: 600;
+}
+
+.custom-segment-row--invalid {
+  border-color: rgba(255, 100, 100, 0.3) !important;
+  background: rgba(255, 50, 50, 0.03) !important;
+}
+
+/* ── Time field ────────────────────────────────────────── */
+.timefield-wrap {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.timefield-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.timefield-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.timefield-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.timefield-use-current {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--cyan);
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 20px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.timefield-use-current:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.2);
+  border-color: var(--cyan);
+}
+
+.timefield-slider {
+  margin: 0;
+}
+
+.timefield-text {
+  width: 100%;
+  padding: 0.45rem 0.7rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  transition: border-color var(--transition-fast);
+  outline: none;
+}
+
+.timefield-text:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(34,211,238,0.15);
+}
+
+.timefield-text::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+}
+
+.timefield-text:disabled {
+  opacity: 0.5;
+}
+
+.timefield-badge {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  letter-spacing: 0.04em;
+  align-self: flex-end;
+}
+
+/* Widen the custom segment inputs flex layout */
+.custom-segment-inputs {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 500px) {
+  .custom-segment-inputs { flex-direction: column; }
+  .timefield-wrap { min-width: 100%; }
+}
